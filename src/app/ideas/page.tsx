@@ -12,7 +12,7 @@ export const maxDuration = 120;
 
 export default function IdeasPage() {
   return (
-    <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6">
+    <div className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6">
       <h1 className="text-lg font-semibold tracking-tight">Ideas</h1>
       <p className="mt-1 mb-6 text-muted-foreground">
         Describe an app and get candidate keywords for each storefront, written
@@ -25,7 +25,7 @@ export default function IdeasPage() {
       >
         <Ideas />
       </Suspense>
-    </main>
+    </div>
   );
 }
 

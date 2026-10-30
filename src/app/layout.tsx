@@ -1,34 +1,42 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import { Inter } from "next/font/google";
+import { getSidebarApps, getSidebarBrainstorms } from "./_data/apps";
+import { AppShell } from "./app-shell";
 import "./globals.css";
-import { Nav } from "./nav";
 
-const plexSans = IBM_Plex_Sans({
-  variable: "--font-plex-sans",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
-});
-
-const plexMono = IBM_Plex_Mono({
-  variable: "--font-plex-mono",
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
 });
 
 export const metadata: Metadata = {
-  title: "Keyword check",
+  title: { default: "Rankcrumb", template: "%s · Rankcrumb" },
   description:
-    "Check App Store keywords by storefront: your app's placement, volume and difficulty from live search results.",
+    "Personal App Store keyword tracker: rank, volume and difficulty per storefront.",
 };
+
+// HeroUI switches themes with data-theme on <html>; follow the system setting
+// before first paint and whenever it changes
+const themeScript = `(function(){var m=window.matchMedia("(prefers-color-scheme: dark)");function a(){document.documentElement.setAttribute("data-theme",m.matches?"dark":"light")}a();m.addEventListener("change",a)})()`;
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${plexSans.variable} ${plexMono.variable} h-full antialiased`}
+      className={`${inter.variable} antialiased`}
+      suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col text-sm">
-        <Nav />
-        {children}
+      <head>
+        <script
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: static theme script, no user input
+          dangerouslySetInnerHTML={{ __html: themeScript }}
+        />
+      </head>
+      <body className="bg-background font-sans text-foreground">
+        {/* Not awaited: the sidebar streams its lists in Suspense boundaries */}
+        <AppShell apps={getSidebarApps()} brainstorms={getSidebarBrainstorms()}>
+          {children}
+        </AppShell>
       </body>
     </html>
   );

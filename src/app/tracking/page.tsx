@@ -29,7 +29,7 @@ type App = { trackId: number; name: string; icon: string };
 
 export default function TrackingPage(props: PageProps<"/tracking">) {
   return (
-    <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6">
+    <div className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6">
       <h1 className="text-lg font-semibold tracking-tight">Tracking</h1>
       <p className="mt-1 mb-6 text-muted-foreground">
         Your apps&apos; keywords, checked once a day, and the competitors that
@@ -42,7 +42,7 @@ export default function TrackingPage(props: PageProps<"/tracking">) {
       >
         <Tracking searchParams={props.searchParams} />
       </Suspense>
-    </main>
+    </div>
   );
 }
 

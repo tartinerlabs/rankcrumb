@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { startTransition, useActionState, useState } from "react";
 import { checkPairs, type State } from "@/app/actions";
-import { Results } from "@/app/check-form";
+import { Results } from "@/app/check/check-form";
 import { type FormState, trackPairs } from "@/app/tracking/actions";
 import { type IdeasState, suggestKeywords } from "./actions";
 

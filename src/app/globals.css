@@ -1,73 +1,41 @@
 @import "tailwindcss";
-
-:root {
-  color-scheme: light dark;
-  --background: oklch(0.985 0.004 85);
-  --foreground: oklch(0.22 0.012 60);
-  --card: oklch(1 0 0);
-  --muted: oklch(0.955 0.006 85);
-  --muted-foreground: oklch(0.52 0.012 60);
-  --border: oklch(0.9 0.008 80);
-  --input: oklch(0.9 0.008 80);
-  --primary: oklch(0.56 0.14 38);
-  --primary-foreground: oklch(0.99 0.005 85);
-  --ring: oklch(0.56 0.14 38 / 0.45);
-  --destructive: oklch(0.55 0.19 27);
-  --notice: oklch(0.8 0.13 80);
-  --notice-foreground: oklch(0.3 0.06 70);
-  --meter-track: oklch(0.92 0.006 80);
-  --meter-fill: oklch(0.22 0.012 60 / 0.7);
-  --rank-top: var(--primary);
-  --rank-mid: var(--foreground);
-  --rank-low: var(--muted-foreground);
-  --radius: 0.625rem;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: oklch(0.19 0.008 60);
-    --foreground: oklch(0.93 0.006 85);
-    --card: oklch(0.225 0.008 60);
-    --muted: oklch(0.26 0.008 60);
-    --muted-foreground: oklch(0.68 0.01 70);
-    --border: oklch(0.32 0.008 60);
-    --input: oklch(0.32 0.008 60);
-    --primary: oklch(0.7 0.13 42);
-    --primary-foreground: oklch(0.18 0.01 60);
-    --destructive: oklch(0.72 0.17 25);
-    --notice: oklch(0.72 0.12 80);
-    --notice-foreground: oklch(0.18 0.02 70);
-    --meter-track: oklch(0.3 0.008 60);
-    --meter-fill: oklch(0.93 0.006 85 / 0.7);
-  }
-}
+@import "@heroui/styles";
+@import "@heroui-pro/react/css";
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-ring: var(--ring);
-  --color-destructive: var(--destructive);
-  --color-notice: var(--notice);
-  --color-notice-foreground: var(--notice-foreground);
-  --color-meter-track: var(--meter-track);
-  --color-meter-fill: var(--meter-fill);
-  --color-rank-top: var(--rank-top);
-  --color-rank-mid: var(--rank-mid);
-  --color-rank-low: var(--rank-low);
-  --radius-control: 6px;
-  --radius-card: var(--radius);
-  --font-sans: var(--font-plex-sans);
-  --font-mono: var(--font-plex-mono);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
+/*
+ * Legacy, delete in release step 5.
+ * The old Check, Tracking, Ideas and Listing pages still use the previous
+ * utility names. Each one points at an existing HeroUI token; no new colours.
+ */
+@theme inline {
+  --color-card: var(--surface);
+  --color-muted-foreground: var(--muted);
+  --color-input: var(--border);
+  --color-primary: var(--accent);
+  --color-primary-foreground: var(--accent-foreground);
+  --color-ring: var(--focus);
+  --color-destructive: var(--danger);
+  --color-notice: var(--warning);
+  --color-notice-foreground: var(--warning-foreground);
+  --color-meter-track: var(--default);
+  --color-meter-fill: var(--muted);
+  --color-rank-top: var(--accent);
+  --color-rank-mid: var(--foreground);
+  --color-rank-low: var(--muted);
+  --radius-control: var(--field-radius);
+  --radius-card: calc(var(--radius) * 2);
+}
+
+/*
+ * Legacy: old pages use bg-muted as a hover fill, but HeroUI's muted is a text
+ * colour. Unlayered so it beats the generated utility.
+ */
+.bg-muted,
+.hover\:bg-muted:hover,
+.group:hover .group-hover\:bg-muted {
+  background-color: var(--default);
 }

@@ -397,7 +397,7 @@ export function CheckForm() {
         withApp={state.withApp}
         empty={
           <div className="rounded-card border border-dashed border-border px-4 py-10 text-center">
-            <p className="font-medium">Nothing checked yet.</p>
+            <p className="font-medium">Nothing Checked Yet</p>
             <p className="mt-1 text-muted-foreground">
               Add a phrase per line, pick storefronts, then Run.
             </p>

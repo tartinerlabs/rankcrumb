@@ -27,7 +27,7 @@ const sectionHeadClass =
 
 export default function ListingPage(props: PageProps<"/listing">) {
   return (
-    <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6">
+    <div className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6">
       <h1 className="text-lg font-semibold tracking-tight">Listing</h1>
       <p className="mt-1 mb-6 text-muted-foreground">
         Rewrite your name, subtitle and keyword field around the keywords you
@@ -40,7 +40,7 @@ export default function ListingPage(props: PageProps<"/listing">) {
       >
         <ListingBody searchParams={props.searchParams} />
       </Suspense>
-    </main>
+    </div>
   );
 }
 
