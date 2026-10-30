@@ -5,6 +5,8 @@ import {
   type AddTermsInput,
   addTerms,
   deleteTerms,
+  listPaletteKeywords,
+  loadHistory,
   localizeMissing,
   restoreTerms,
   setCountries,
@@ -56,4 +58,14 @@ export async function deleteTermsAction(appId: number, termIds: number[]) {
 
 export async function restoreTermsAction(appId: number, termIds: number[]) {
   return act(() => restoreTerms(appId, termIds), true);
+}
+
+/** Keywords of every workspace for the command palette (term id, label, app id and name). */
+export async function paletteKeywordsAction() {
+  return act(() => listPaletteKeywords());
+}
+
+/** Rank, volume and difficulty history of a term per storefront, for a keyword detail opened on the client. */
+export async function loadHistoryAction(appId: number, termId: number) {
+  return act(() => loadHistory(appId, termId));
 }

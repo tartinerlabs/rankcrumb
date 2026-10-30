@@ -27,6 +27,8 @@ type AppJson = {
   name: string;
   icon: string;
   is_mine: boolean;
+  /** Null for removed apps and apps only seen as competitors */
+  added_at?: string | null;
   storefront?: string;
   countries?: string[];
   language?: string;
@@ -34,7 +36,7 @@ type AppJson = {
   listing?: Record<string, ListingText> | null;
 };
 
-/** One app for its workspace, or null when the id is unknown. Deduped per request. */
+/** One app for its workspace, or null when the id is unknown or not a workspace (removed or competitor only). Deduped per request. */
 export const getWorkspaceApp = cache(
   async (id: string): Promise<WorkspaceApp | null> => {
     await connection();
@@ -49,7 +51,8 @@ export const getWorkspaceApp = cache(
         where a.track_id = ${trackId}`,
     );
     const row = rows[0];
-    if (!row) return null;
+    // Same rule as the actions' appRow, so a stale link after Remove gets a 404
+    if (!row || !row.app.added_at) return null;
     const app = row.app;
 
     // Keywords reach an app through app_keywords and, once terms exist, its terms' local phrases

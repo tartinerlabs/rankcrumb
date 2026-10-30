@@ -10,7 +10,7 @@ export type StartProgress = {
   step: number | null;
 };
 
-/** Whether any app is saved, and how far the first-run steps got for your own apps. */
+/** Whether any app is saved, and how far the first-run steps got for your own apps (removed ones excluded). */
 export async function getStartProgress(): Promise<StartProgress> {
   await connection();
   let r: {
@@ -23,16 +23,19 @@ export async function getStartProgress(): Promise<StartProgress> {
     const { rows } = await db.execute<typeof r>(sql`
       select
         exists (select 1 from apps) as has_apps,
-        exists (select 1 from apps where is_mine) as has_mine,
         exists (
-          select 1 from apps where is_mine and cardinality(countries) > 0
+          select 1 from apps where is_mine and added_at is not null
+        ) as has_mine,
+        exists (
+          select 1 from apps
+          where is_mine and added_at is not null and cardinality(countries) > 0
         ) as has_countries,
         exists (
           select 1 from terms t join apps a on a.track_id = t.app_id
-          where a.is_mine and t.deleted_at is null
+          where a.is_mine and a.added_at is not null and t.deleted_at is null
         ) or exists (
           select 1 from app_keywords ak join apps a on a.track_id = ak.app_id
-          where a.is_mine
+          where a.is_mine and a.added_at is not null
         ) as has_keywords`);
     r = rows[0];
   } catch (e) {
@@ -41,11 +44,13 @@ export async function getStartProgress(): Promise<StartProgress> {
     const { rows } = await db.execute<typeof r>(sql`
       select
         exists (select 1 from apps) as has_apps,
-        exists (select 1 from apps where is_mine) as has_mine,
+        exists (
+          select 1 from apps where is_mine and added_at is not null
+        ) as has_mine,
         true as has_countries,
         exists (
           select 1 from app_keywords ak join apps a on a.track_id = ak.app_id
-          where a.is_mine
+          where a.is_mine and a.added_at is not null
         ) as has_keywords`);
     r = rows[0];
   }

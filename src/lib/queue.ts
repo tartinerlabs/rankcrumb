@@ -102,7 +102,9 @@ export async function enqueueDue(): Promise<number> {
         and tp.keyword_id is not null
       -- Legacy tracked keywords; remove with app_keywords at the UI switch-over cleanup
       union all
-      select keyword_id, interval '20 hours' from app_keywords
+      select ak.keyword_id, interval '20 hours' from app_keywords ak
+      join apps a on a.track_id = ak.app_id
+      where a.added_at is not null
     )
     update keywords k set queued_at = coalesce(k.queued_at, now())
     from (select id, min(max_age) as max_age from due group by id) d
@@ -115,7 +117,23 @@ export async function enqueueDue(): Promise<number> {
   return rows.length;
 }
 
-/** Queue checks older than an hour for an app's terms (all visible ones, or the given ones), ahead of scheduled ones. */
+/**
+ * Keyword ids of an app's visible terms in its researched storefronts, plus its
+ * legacy app_keywords links. Shared by Check now, Pause and progress so they agree.
+ */
+function appKeywordIds(appId: number) {
+  return sql`select tp.keyword_id from term_phrases tp
+    join terms t on t.id = tp.term_id
+    join apps a on a.track_id = t.app_id
+    where t.app_id = ${appId} and not t.hidden
+      and t.deleted_at is null and tp.keyword_id is not null
+      and tp.country = any(a.countries)
+    -- Legacy tracked keywords; the old pages can still add them, so remove with app_keywords at cleanup
+    union
+    select keyword_id from app_keywords where app_id = ${appId}`;
+}
+
+/** Queue checks older than an hour for an app's keywords (all visible ones, or the given terms), ahead of scheduled ones. */
 export async function checkNow(
   appId: number,
   termIds?: number[],
@@ -126,18 +144,60 @@ export async function checkNow(
   const picked = parsed.data;
   if (picked?.length === 0) return 0;
 
-  const { rows } = await db.execute<{ id: number }>(sql`
-    select distinct tp.keyword_id as id
-    from term_phrases tp
-    join terms t on t.id = tp.term_id
-    join apps a on a.track_id = t.app_id
-    where t.app_id = ${appId} and t.deleted_at is null
-      and tp.keyword_id is not null and tp.country = any(a.countries)
-      and ${picked ? sql`t.id in ${picked}` : sql`not t.hidden`}`);
+  const { rows } = await db.execute<{ id: number }>(
+    picked
+      ? sql`
+        select distinct tp.keyword_id as id
+        from term_phrases tp
+        join terms t on t.id = tp.term_id
+        join apps a on a.track_id = t.app_id
+        where t.app_id = ${appId} and t.deleted_at is null
+          and tp.keyword_id is not null and tp.country = any(a.countries)
+          and t.id in ${picked}`
+      : sql`select keyword_id as id from (${appKeywordIds(appId)}) ids`,
+  );
   return enqueue(
     rows.map((r) => r.id),
     { maxAgeMs: HOUR_MS, priority: 0 },
   );
+}
+
+/**
+ * Pause an app's run: take its pending checks off the queue (the one being
+ * checked finishes). Keywords another workspace or a brainstorm also needs stay
+ * queued, since keyword rows are shared. Check now (or resumeChecks) queues the
+ * rest again, and the next schedule brings them back anyway. Returns the checks taken off.
+ */
+export async function pauseChecks(appId: number): Promise<number> {
+  await appRow(appId);
+  const { rows } = await db.execute<{ id: number }>(sql`
+    update keywords k
+    set queued_at = null, queue_priority = 1, attempts = 0
+    where k.queued_at is not null and k.id in (${appKeywordIds(appId)})
+      and not exists (
+        select 1 from term_phrases tp
+        join terms t on t.id = tp.term_id
+        join apps a on a.track_id = t.app_id
+        where tp.keyword_id = k.id and t.app_id <> ${appId}
+          and not t.hidden and t.deleted_at is null
+          and a.added_at is not null and tp.country = any(a.countries)
+      )
+      and not exists (
+        select 1 from app_keywords ak
+        join apps a on a.track_id = ak.app_id
+        where ak.keyword_id = k.id and ak.app_id <> ${appId}
+          and a.added_at is not null
+      )
+      and not exists (
+        select 1 from brainstorms b where k.id = any(b.keyword_ids)
+      )
+    returning k.id`);
+  return rows.length;
+}
+
+/** Pair of pauseChecks: queue the app's checks not done in the last hour again. Same as Check now. */
+export async function resumeChecks(appId: number): Promise<number> {
+  return checkNow(appId);
 }
 
 async function countQueued() {
@@ -296,7 +356,11 @@ export async function kick(): Promise<void> {
   }).catch((e) => console.error("[queue] kick", e));
 }
 
-/** Pending and done checks of an app's visible phrases or a brainstorm's keywords, with the worker state. */
+/**
+ * Pending and done checks of an app's keywords or a brainstorm's, with the
+ * worker state. state "paused" is an App Store rate-limit pause, not pauseChecks:
+ * after pauseChecks pending is 0 and state is "idle". Show Pause while pending > 0.
+ */
 export async function getProgress(scope: Scope): Promise<Progress> {
   const parsed = z
     .union([
@@ -307,12 +371,7 @@ export async function getProgress(scope: Scope): Promise<Progress> {
   if (!parsed.success) throw new UserError("Unknown app or brainstorm");
   const ids =
     "appId" in parsed.data
-      ? sql`select tp.keyword_id from term_phrases tp
-          join terms t on t.id = tp.term_id
-          join apps a on a.track_id = t.app_id
-          where t.app_id = ${parsed.data.appId} and not t.hidden
-            and t.deleted_at is null and tp.keyword_id is not null
-            and tp.country = any(a.countries)`
+      ? appKeywordIds(parsed.data.appId)
       : sql`select unnest(keyword_ids) from brainstorms where id = ${parsed.data.brainstormId}`;
 
   const { rows } = await db.execute<{

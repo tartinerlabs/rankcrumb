@@ -101,6 +101,8 @@ export const apps = snakeCase.table(
     listing: jsonb().$type<Record<string, ListingText>>(),
     // Set when added on the start screen; null for apps only seen as competitors
     addedAt: timestamp({ withTimezone: true }),
+    // Set by Remove so Undo can restore the workspace; cron purges the app after a day
+    removedAt: timestamp({ withTimezone: true }),
     refreshedAt: timestamp({ withTimezone: true }),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   },

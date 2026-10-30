@@ -11,6 +11,7 @@ import {
   TagGroup,
   toast,
 } from "@heroui/react";
+import { useSelectedLayoutSegment } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Autocomplete, useFilter } from "react-aria-components/Autocomplete";
 import { setCountriesAction } from "@/actions/terms";
@@ -18,9 +19,11 @@ import { COUNTRIES, getCountry } from "@/components/countries";
 
 type Props = { trackId: number; countries: string[] };
 
-/** The app's countries as removable flag tags, plus an Add country picker. */
+/** The app's countries as removable flag tags, plus an Add Country picker. */
 export function CountryBar({ trackId, countries }: Props) {
   const [isPending, startTransition] = useTransition();
+  // Track has its own country cards
+  const isTrack = useSelectedLayoutSegment() === "track";
 
   const save = (next: string[]) => {
     startTransition(async () => {
@@ -28,6 +31,8 @@ export function CountryBar({ trackId, countries }: Props) {
       if (res.error !== undefined) toast.danger(res.error);
     });
   };
+
+  if (isTrack) return null;
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -74,10 +79,10 @@ function AddCountry({
     <Popover isOpen={isOpen} onOpenChange={setIsOpen}>
       <Button size="sm" variant="ghost" isPending={isPending}>
         <IconPlus />
-        Add country
+        Add Country
       </Button>
       <Popover.Content placement="bottom start">
-        <Popover.Dialog aria-label="Add country">
+        <Popover.Dialog aria-label="Add Country">
           <div className="flex w-72 flex-col gap-3">
             <Autocomplete filter={contains}>
               <SearchField

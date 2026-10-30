@@ -15,7 +15,7 @@ export type SidebarApp = {
 
 export type SidebarBrainstorm = { id: number; idea: string };
 
-/** Apps for the sidebar: yours first, then competitors, oldest first. */
+/** Workspace apps for the sidebar (added on the start screen): yours first, then the rest, oldest first. */
 export async function getSidebarApps(): Promise<SidebarApp[]> {
   await connection();
   const { rows: probe } = await db.execute<{ has_terms: boolean }>(
@@ -59,6 +59,7 @@ export async function getSidebarApps(): Promise<SidebarApp[]> {
         )
       ) as top10
     from apps a
+    where a.added_at is not null
     order by a.is_mine desc, a.created_at`);
 
   return rows.map((r) => ({

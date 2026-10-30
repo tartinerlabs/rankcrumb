@@ -31,8 +31,9 @@
 }
 
 /*
- * Legacy: old pages use bg-muted as a hover fill, but HeroUI's muted is a text
- * colour. Unlayered so it beats the generated utility.
+ * Legacy, delete in release step 5 (user-approved override until then).
+ * Old pages use bg-muted as a hover fill, but HeroUI's muted is a text colour.
+ * Unlayered so it beats the generated utility. New UI must not use bg-muted.
  */
 .bg-muted,
 .hover\:bg-muted:hover,

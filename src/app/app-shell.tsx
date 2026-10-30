@@ -10,7 +10,9 @@ import {
 } from "@heroui-pro/react";
 import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, Suspense, use, useEffect, useState } from "react";
+import { paletteKeywordsAction } from "@/actions/terms";
 import { BulbIcon, ChartIcon, FileIcon } from "@/components/icons";
+import type { PaletteKeyword } from "@/lib/terms";
 import type { SidebarApp, SidebarBrainstorm } from "./_data/apps";
 
 // Old pages stay reachable until release step 5
@@ -83,7 +85,6 @@ export function AppShell({ apps, brainstorms, children }: Props) {
               <Tooltip>
                 <Button
                   isIconOnly
-                  size="sm"
                   variant="ghost"
                   aria-label="Search apps"
                   onPress={() => setIsCommandOpen(true)}
@@ -284,17 +285,31 @@ function CommandPalette({
   onOpenChange: (open: boolean) => void;
   navigate: (href: string) => void;
 }) {
+  const [keywords, setKeywords] = useState<PaletteKeyword[]>([]);
+
+  // Keywords change on any tab, so read them each time the palette opens
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    paletteKeywordsAction().then((res) => {
+      if (!cancelled && res.data) setKeywords(res.data);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen]);
+
   return (
     <Command>
       <Command.Backdrop isOpen={isOpen} onOpenChange={onOpenChange}>
         <Command.Container>
-          <Command.Dialog aria-label="Jump to an app">
+          <Command.Dialog aria-label="Jump to an app or keyword">
             <Command.Header>
-              <Command.InputGroup aria-label="Search apps and brainstorms">
+              <Command.InputGroup aria-label="Search apps, keywords and brainstorms">
                 <Command.InputGroup.Prefix>
                   <IconSearch />
                 </Command.InputGroup.Prefix>
-                <Command.InputGroup.Input placeholder="Jump to an app or brainstorm" />
+                <Command.InputGroup.Input placeholder="Jump to an app, keyword or brainstorm" />
                 <Command.InputGroup.ClearButton />
               </Command.InputGroup>
             </Command.Header>
@@ -302,6 +317,7 @@ function CommandPalette({
               <CommandResults
                 apps={apps}
                 brainstorms={brainstorms}
+                keywords={keywords}
                 navigate={navigate}
               />
             </Suspense>
@@ -315,8 +331,12 @@ function CommandPalette({
 function CommandResults({
   apps,
   brainstorms,
+  keywords,
   navigate,
-}: Data & { navigate: (href: string) => void }) {
+}: Data & {
+  keywords: PaletteKeyword[];
+  navigate: (href: string) => void;
+}) {
   const appList = use(apps);
   const brainstormList = use(brainstorms);
   return (
@@ -347,6 +367,20 @@ function CommandResults({
                 className="size-5 rounded-md"
               />
               {app.name}
+            </Command.Item>
+          ))}
+        </Command.Group>
+      )}
+      {keywords.length > 0 && (
+        <Command.Group heading="Keywords">
+          {keywords.map((k) => (
+            <Command.Item
+              key={k.termId}
+              id={`/apps/${k.appId}/k/${k.termId}`}
+              textValue={`${k.label} ${k.appName}`}
+            >
+              {k.label}
+              <span className="text-muted">{k.appName}</span>
             </Command.Item>
           ))}
         </Command.Group>

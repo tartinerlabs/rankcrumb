@@ -7,6 +7,7 @@ import {
   addCompetitor,
   removeApp,
   removeCompetitor,
+  restoreApp,
   searchApps,
   updateApp,
 } from "@/lib/apps";
@@ -32,6 +33,11 @@ export async function updateAppAction(
 
 export async function removeAppAction(appId: number) {
   return act(() => removeApp(appId), true);
+}
+
+/** Undo of Remove, within a day. */
+export async function restoreAppAction(appId: number) {
+  return act(() => restoreApp(appId), true);
 }
 
 export async function addCompetitorAction(

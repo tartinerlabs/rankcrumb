@@ -14,7 +14,11 @@ import {
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Link } from "react-aria-components/Link";
-import { removeAppAction, updateAppAction } from "@/actions/apps";
+import {
+  removeAppAction,
+  restoreAppAction,
+  updateAppAction,
+} from "@/actions/apps";
 import { GearIcon, StarIcon } from "@/components/icons";
 import type { Schedule } from "@/db/schema";
 
@@ -73,14 +77,17 @@ export function HeaderActions({
 
   const toggleMine = () => {
     const mine = !isMine;
-    update({ mine }, () =>
-      toast(mine ? "Marked as mine" : "Marked as competitor", {
+    update({ mine }, () => {
+      const id = toast(mine ? "Marked as mine" : "Marked as competitor", {
         actionProps: {
           children: "Undo",
-          onPress: () => update({ mine: !mine }),
+          onPress: () => {
+            toast.close(id);
+            update({ mine: !mine });
+          },
         },
-      }),
-    );
+      });
+    });
   };
 
   const remove = () => {
@@ -91,7 +98,18 @@ export function HeaderActions({
         return;
       }
       setIsRemoveOpen(false);
-      toast(`Removed ${name}`);
+      // Closing first stops a second Undo from restoring twice
+      const id = toast(`Removed ${name}`, {
+        actionProps: {
+          children: "Undo",
+          onPress: async () => {
+            toast.close(id);
+            const undo = await restoreAppAction(trackId);
+            if (undo.error !== undefined) toast.danger(undo.error);
+            else router.push(`/apps/${trackId}/board`);
+          },
+        },
+      });
       router.push("/");
     });
   };
@@ -106,7 +124,6 @@ export function HeaderActions({
           aria-label="Open on the App Store"
           className={buttonVariants({
             variant: "ghost",
-            size: "sm",
             isIconOnly: true,
           })}
         >
@@ -118,7 +135,6 @@ export function HeaderActions({
       <Tooltip>
         <Button
           isIconOnly
-          size="sm"
           variant="ghost"
           aria-label={markLabel}
           onPress={toggleMine}
@@ -130,7 +146,7 @@ export function HeaderActions({
 
       <Dropdown>
         <Tooltip>
-          <Button isIconOnly size="sm" variant="ghost" aria-label="Settings">
+          <Button isIconOnly variant="ghost" aria-label="Settings">
             <GearIcon />
           </Button>
           <Tooltip.Content>Settings</Tooltip.Content>

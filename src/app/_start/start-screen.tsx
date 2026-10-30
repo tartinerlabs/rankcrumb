@@ -383,7 +383,7 @@ function CountriesDialog({
     <Modal
       isOpen={appId !== null}
       onOpenChange={(open) => {
-        // Closing skips the step; the workspace offers Add country later
+        // Closing skips the step; the workspace offers Add Country later
         if (!open && !isPending && appId !== null) onDone(appId);
       }}
     >

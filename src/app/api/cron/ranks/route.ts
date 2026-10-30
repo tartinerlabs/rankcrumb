@@ -1,4 +1,5 @@
 import { after, type NextRequest } from "next/server";
+import { purgeRemovedApps } from "@/lib/apps";
 import { refreshAppMeta } from "@/lib/meta";
 import { BUDGET_MS, enqueueDue, purgeDeleted, work } from "@/lib/queue";
 
@@ -7,7 +8,7 @@ export const maxDuration = 300;
 
 const META_BUDGET_MS = 45_000;
 
-/** Vercel Cron: purge old deleted terms, queue due checks, refresh app details, then drain the queue. */
+/** Vercel Cron: purge old deleted terms and removed apps, queue due checks, refresh app details, then drain the queue. */
 export async function GET(request: NextRequest) {
   const secret = process.env.CRON_SECRET;
   if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) {
@@ -15,6 +16,7 @@ export async function GET(request: NextRequest) {
   }
   const start = Date.now();
   await purgeDeleted();
+  await purgeRemovedApps();
   const queued = await enqueueDue();
   const { refreshed } = await refreshAppMeta({
     deadline: start + META_BUDGET_MS,

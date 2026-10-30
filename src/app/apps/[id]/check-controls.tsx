@@ -3,7 +3,7 @@
 import { Button, Label, ProgressBar, toast } from "@heroui/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
-import { checkNowAction } from "@/actions/queue";
+import { checkNowAction, pauseChecksAction } from "@/actions/queue";
 
 type Progress = {
   pending: number;
@@ -16,7 +16,7 @@ const POLL_MS = 3000;
 
 type Props = { trackId: number; checkedText: string | null };
 
-/** Check now, then "Checking X of Y" with a progress bar while the queue works. */
+/** Check now, then "Checking X of Y" with a progress bar and Pause while the queue works. */
 export function CheckControls({ trackId, checkedText }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -73,6 +73,19 @@ export function CheckControls({ trackId, checkedText }: Props) {
     });
   };
 
+  // The check already running finishes; Check now afterwards resumes
+  const pause = () => {
+    startTransition(async () => {
+      const res = await pauseChecksAction(trackId);
+      if (res.error !== undefined) {
+        toast.danger(res.error);
+        return;
+      }
+      toast(`Paused ${res.data} ${res.data === 1 ? "check" : "checks"}`);
+      setPoll((n) => n + 1);
+    });
+  };
+
   return (
     <div className="flex items-center gap-3">
       {isActive ? (
@@ -98,7 +111,11 @@ export function CheckControls({ trackId, checkedText }: Props) {
           <span className="text-sm text-muted tabular-nums">{checkedText}</span>
         )
       )}
-      {!isActive && (
+      {isActive ? (
+        <Button variant="outline" isPending={isPending} onPress={pause}>
+          Pause
+        </Button>
+      ) : (
         <Button variant="outline" isPending={isPending} onPress={checkNow}>
           Check now
         </Button>

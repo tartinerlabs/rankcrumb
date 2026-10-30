@@ -1,6 +1,16 @@
 import "server-only";
 
-import { and, asc, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  isNull,
+  lt,
+  sql,
+} from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import {
@@ -161,6 +171,8 @@ export async function addApp(input: {
       set: {
         isMine: mine,
         addedAt: sql`coalesce(${apps.addedAt}, now())`,
+        // Adding again inside the Undo window keeps the app; its removed terms are still purged
+        removedAt: null,
         // excluded.countries is [] for an own app, so only a competitor workspace gets one
         countries: sql`case when ${apps.countries} = '{}' then excluded.countries else ${apps.countries} end`,
       },
@@ -252,30 +264,90 @@ export async function updateApp(
 }
 
 /**
- * Remove a workspace. An app another workspace compares with keeps its row:
- * its terms, legacy links and own competitors go and it stops being a workspace.
- * Otherwise the row is deleted. Keywords and checks are always kept.
+ * Remove a workspace, undoable for a day with restoreApp: it stops being a
+ * workspace and its terms are soft deleted at the same time; purgeRemovedApps
+ * finishes the removal. Keywords and checks are always kept.
  */
 export async function removeApp(id: number): Promise<void> {
   await appRow(id);
+  // now() is the transaction start, so terms.deleted_at equals apps.removed_at
   await db.transaction(async (tx) => {
-    const [competitor] = await tx
-      .select({ appId: appCompetitors.appId })
-      .from(appCompetitors)
-      .where(eq(appCompetitors.competitorId, id))
-      .limit(1);
-    if (!competitor) {
-      // Cascades to terms, term phrases, legacy links and competitor rows
-      await tx.delete(apps).where(eq(apps.trackId, id));
-      return;
-    }
-    await tx.delete(terms).where(eq(terms.appId, id));
-    await tx.delete(appKeywords).where(eq(appKeywords.appId, id));
-    await tx.delete(appCompetitors).where(eq(appCompetitors.appId, id));
+    await tx
+      .update(terms)
+      .set({ deletedAt: sql`now()` })
+      .where(and(eq(terms.appId, id), isNull(terms.deletedAt)));
     await tx
       .update(apps)
-      .set({ countries: [], addedAt: null, isMine: false })
+      .set({ addedAt: null, removedAt: sql`now()` })
       .where(eq(apps.trackId, id));
+  });
+}
+
+/** Undo of removeApp, until cron purges it: the workspace and the terms removed with it come back. */
+export async function restoreApp(id: number): Promise<AppSummary> {
+  const app = await appRow(id, { any: true });
+  if (app.removedAt === null || app.addedAt !== null) {
+    throw new UserError("This app was not removed");
+  }
+  await db.transaction(async (tx) => {
+    await tx
+      .update(terms)
+      .set({ deletedAt: null })
+      // Compared in SQL: a JS Date would drop the microseconds of now()
+      .where(
+        and(
+          eq(terms.appId, id),
+          sql`${terms.deletedAt} = (select removed_at from apps where track_id = ${id})`,
+        ),
+      );
+    await tx
+      .update(apps)
+      .set({ addedAt: sql`now()`, removedAt: null })
+      .where(eq(apps.trackId, id));
+  });
+  return getApp(id);
+}
+
+/**
+ * Cron: finish removals older than a day (past Undo). An app another workspace
+ * compares with keeps its row: its legacy links and own competitors go and it
+ * is no longer mine. Otherwise the row is deleted. Terms go with purgeDeleted.
+ */
+export async function purgeRemovedApps(): Promise<number> {
+  return db.transaction(async (tx) => {
+    const due = await tx
+      .select({ id: apps.trackId })
+      .from(apps)
+      .where(
+        and(
+          isNull(apps.addedAt),
+          lt(apps.removedAt, sql`now() - interval '1 day'`),
+        ),
+      );
+    if (due.length === 0) return 0;
+    const ids = due.map((a) => a.id);
+    const kept = await tx
+      .selectDistinct({ id: appCompetitors.competitorId })
+      .from(appCompetitors)
+      .where(inArray(appCompetitors.competitorId, ids));
+    const keep = new Set(kept.map((k) => k.id));
+    const drop = ids.filter((i) => !keep.has(i));
+    // Cascades to terms, term phrases, legacy links and competitor rows
+    if (drop.length > 0)
+      await tx.delete(apps).where(inArray(apps.trackId, drop));
+    if (keep.size > 0) {
+      const strip = [...keep];
+      await tx.delete(terms).where(inArray(terms.appId, strip));
+      await tx.delete(appKeywords).where(inArray(appKeywords.appId, strip));
+      await tx
+        .delete(appCompetitors)
+        .where(inArray(appCompetitors.appId, strip));
+      await tx
+        .update(apps)
+        .set({ countries: [], isMine: false, removedAt: null })
+        .where(inArray(apps.trackId, strip));
+    }
+    return ids.length;
   });
 }
 

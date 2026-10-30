@@ -1,6 +1,16 @@
 import "server-only";
 
-import { and, asc, eq, inArray, isNotNull, isNull, ne, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  isNull,
+  ne,
+  sql,
+} from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import {
@@ -198,6 +208,9 @@ export type TrackRow = {
   phrase: string;
   keywordId: number;
   rank: number | null;
+  /** Rank in the check before; null when unranked then or there is no earlier check (rankChange is null then) */
+  previousRank: number | null;
+  /** Places gained since the check before (negative = dropped); null with no earlier check */
   rankChange: number | null;
   volume: number | null;
   difficulty: number | null;
@@ -268,6 +281,7 @@ export async function loadTrack(
       phrase: r.phrase as string,
       keywordId,
       rank: l?.rank ?? null,
+      previousRank: l?.previousRank ?? null,
       rankChange:
         l && l.previousRank !== undefined
           ? (l.previousRank ?? UNRANKED) - (l.rank ?? UNRANKED)
@@ -317,6 +331,32 @@ export async function loadTrack(
     rows,
     losingTo,
   };
+}
+
+export type PaletteKeyword = {
+  termId: number;
+  label: string;
+  appId: number;
+  appName: string;
+};
+
+/** Every non-deleted term of every workspace, for the command palette; one query, no checks read. */
+export async function listPaletteKeywords(): Promise<PaletteKeyword[]> {
+  return db
+    .select({
+      termId: terms.id,
+      label: terms.label,
+      appId: apps.trackId,
+      appName: apps.name,
+    })
+    .from(terms)
+    .innerJoin(apps, eq(apps.trackId, terms.appId))
+    .where(and(isNull(terms.deletedAt), isNotNull(apps.addedAt)))
+    .orderBy(
+      desc(apps.isMine),
+      asc(sql`lower(${apps.name})`),
+      asc(terms.label),
+    );
 }
 
 /** A non-deleted term of the app, or UserError. */

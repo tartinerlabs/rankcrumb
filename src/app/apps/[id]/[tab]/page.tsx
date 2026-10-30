@@ -1,8 +1,14 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { BoardTab } from "../_board/board-tab";
+import { KeywordsTab } from "../_keywords/keywords-tab";
+import { OptimizeTab } from "../_optimize/optimize-tab";
+import { TrackTab } from "../_track/track-tab";
 import { getWorkspaceApp } from "../data";
 import { isTab } from "../tabs";
-import { TabEmptyState } from "./tab-empty-state";
+
+// Localize (Keywords) and listing proposals (Optimize) are AI server actions on this page
+export const maxDuration = 120;
 
 export default function AppTabPage({ params }: PageProps<"/apps/[id]/[tab]">) {
   return (
@@ -21,5 +27,18 @@ async function TabContent({
   if (!isTab(tab)) notFound();
   const app = await getWorkspaceApp(id);
   if (!app || (tab === "optimize" && !app.isMine)) notFound();
-  return <TabEmptyState tab={tab} />;
+
+  const { trackId: appId, isMine, countries } = app;
+  switch (tab) {
+    case "board":
+      return <BoardTab appId={appId} isMine={isMine} countries={countries} />;
+    case "keywords":
+      return (
+        <KeywordsTab appId={appId} isMine={isMine} countries={countries} />
+      );
+    case "track":
+      return <TrackTab appId={appId} isMine={isMine} countries={countries} />;
+    case "optimize":
+      return <OptimizeTab appId={appId} countries={countries} />;
+  }
 }
