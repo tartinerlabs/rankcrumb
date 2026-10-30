@@ -10,19 +10,28 @@
     "format": "biome format --write"
   },
   "dependencies": {
+    "@heroui-pro/react": "1.0.0-beta.10",
+    "@heroui/react": "3.2.7",
+    "@heroui/styles": "3.2.7",
     "@modelcontextprotocol/server": "2.4.0",
     "@neon/config": "1.9.3",
     "@neon/env": "1.6.4",
+    "@react-aria/utils": "3.34.1",
     "@vercel/functions": "3.10.3",
     "ai": "7.0.153",
     "drizzle-orm": "1.0.0-rc.5",
     "jose": "6.2.13",
     "mcp-handler": "2.3.0",
+    "motion": "14.7.1",
     "next": "16.4.3",
     "pg": "8.23.1",
     "react": "19.3.0",
+    "react-aria-components": "1.22.1",
     "react-dom": "19.3.0",
+    "react-resizable-panels": "4.15.1",
     "server-only": "0.0.1",
+    "tailwind-merge": "3.7.0",
+    "tailwind-variants": "3.3.1",
     "zod": "4.6.7"
   },
   "devDependencies": {
@@ -40,5 +49,16 @@
     "tailwindcss": "^4",
     "typescript": "^5"
   },
-  "packageManager": "pnpm@12.4.1"
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "12.16.1",
+      "onFail": "download"
+    },
+    "runtime": {
+      "name": "node",
+      "version": "26.8.2",
+      "onFail": "download"
+    }
+  }
 }

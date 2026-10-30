@@ -1,12 +1,8 @@
 allowBuilds:
+  "@heroui-pro/react": true
+  "@zowe/secrets-for-zowe-sdk": false
   esbuild: false
   sharp: false
   unrs-resolver: false
-
-minimumReleaseAgeExclude:
-  - '@ai-sdk/gateway@4.0.126'
-  - '@ai-sdk/provider-utils@5.0.68'
-  - '@ai-sdk/provider@4.0.34'
-  - ai@7.0.153
 
 savePrefix: ""
