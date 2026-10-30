@@ -11,17 +11,9 @@ import {
 import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, Suspense, use, useEffect, useState } from "react";
 import { paletteKeywordsAction } from "@/actions/terms";
-import { BulbIcon, ChartIcon, FileIcon } from "@/components/icons";
+import { BulbIcon } from "@/components/icons";
 import type { PaletteKeyword } from "@/lib/terms";
 import type { SidebarApp, SidebarBrainstorm } from "./_data/apps";
-
-// Old pages stay reachable until release step 5
-const oldPages = [
-  { href: "/check", label: "Check", Icon: IconSearch },
-  { href: "/tracking", label: "Tracking", Icon: ChartIcon },
-  { href: "/ideas", label: "Ideas", Icon: BulbIcon },
-  { href: "/listing", label: "Listing", Icon: FileIcon },
-] as const;
 
 type Data = {
   apps: Promise<SidebarApp[]>;
@@ -158,26 +150,6 @@ function SidebarNav({
         <Suspense fallback={null}>
           <BrainstormsGroup brainstorms={brainstorms} pathname={pathname} />
         </Suspense>
-
-        <Sidebar.Group>
-          <Sidebar.GroupLabel>Old Pages</Sidebar.GroupLabel>
-          <Sidebar.Menu aria-label="Old pages">
-            {oldPages.map(({ href, label, Icon }) => (
-              <Sidebar.MenuItem
-                key={href}
-                id={href}
-                href={href}
-                textValue={label}
-                isCurrent={pathname?.startsWith(href) ?? false}
-              >
-                <Sidebar.MenuIcon>
-                  <Icon />
-                </Sidebar.MenuIcon>
-                <Sidebar.MenuLabel>{label}</Sidebar.MenuLabel>
-              </Sidebar.MenuItem>
-            ))}
-          </Sidebar.Menu>
-        </Sidebar.Group>
       </Sidebar.Content>
     </>
   );

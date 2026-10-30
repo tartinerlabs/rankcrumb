@@ -33,9 +33,6 @@ export async function getStartProgress(): Promise<StartProgress> {
         exists (
           select 1 from terms t join apps a on a.track_id = t.app_id
           where a.is_mine and a.added_at is not null and t.deleted_at is null
-        ) or exists (
-          select 1 from app_keywords ak join apps a on a.track_id = ak.app_id
-          where a.is_mine and a.added_at is not null
         ) as has_keywords`);
     r = rows[0];
   } catch (e) {
@@ -48,10 +45,7 @@ export async function getStartProgress(): Promise<StartProgress> {
           select 1 from apps where is_mine and added_at is not null
         ) as has_mine,
         true as has_countries,
-        exists (
-          select 1 from app_keywords ak join apps a on a.track_id = ak.app_id
-          where a.is_mine and a.added_at is not null
-        ) as has_keywords`);
+        false as has_keywords`);
     r = rows[0];
   }
 

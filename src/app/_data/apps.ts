@@ -21,18 +21,16 @@ export async function getSidebarApps(): Promise<SidebarApp[]> {
   const { rows: probe } = await db.execute<{ has_terms: boolean }>(
     sql`select to_regclass('term_phrases') is not null as has_terms`,
   );
-  // Same keyword set as the workspace: app_keywords and, once terms exist, its terms' local phrases
+  // Same keyword set as the workspace and the queue: the terms' local phrases
   const keywordIds = probe[0]?.has_terms
     ? sql`
-        select ak.keyword_id from app_keywords ak where ak.app_id = a.track_id
-        union
         select tp.keyword_id
         from terms t
         join term_phrases tp on tp.term_id = t.id
         where t.app_id = a.track_id
           and t.deleted_at is null
           and tp.keyword_id is not null`
-    : sql`select ak.keyword_id from app_keywords ak where ak.app_id = a.track_id`;
+    : sql`select null::integer as keyword_id where false`;
 
   const { rows } = await db.execute<{
     track_id: number | string;

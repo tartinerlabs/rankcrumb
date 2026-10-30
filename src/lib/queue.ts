@@ -100,11 +100,6 @@ export async function enqueueDue(): Promise<number> {
         and a.added_at is not null and a.schedule <> 'off'
         and tp.country = any(a.countries)
         and tp.keyword_id is not null
-      -- Legacy tracked keywords; remove with app_keywords at the UI switch-over cleanup
-      union all
-      select ak.keyword_id, interval '20 hours' from app_keywords ak
-      join apps a on a.track_id = ak.app_id
-      where a.added_at is not null
     )
     update keywords k set queued_at = coalesce(k.queued_at, now())
     from (select id, min(max_age) as max_age from due group by id) d
@@ -117,20 +112,14 @@ export async function enqueueDue(): Promise<number> {
   return rows.length;
 }
 
-/**
- * Keyword ids of an app's visible terms in its researched storefronts, plus its
- * legacy app_keywords links. Shared by Check now, Pause and progress so they agree.
- */
+/** Keyword ids of an app's visible terms in its researched storefronts. Shared by Check now, Pause and progress so they agree. */
 function appKeywordIds(appId: number) {
   return sql`select tp.keyword_id from term_phrases tp
     join terms t on t.id = tp.term_id
     join apps a on a.track_id = t.app_id
     where t.app_id = ${appId} and not t.hidden
       and t.deleted_at is null and tp.keyword_id is not null
-      and tp.country = any(a.countries)
-    -- Legacy tracked keywords; the old pages can still add them, so remove with app_keywords at cleanup
-    union
-    select keyword_id from app_keywords where app_id = ${appId}`;
+      and tp.country = any(a.countries)`;
 }
 
 /** Queue checks older than an hour for an app's keywords (all visible ones, or the given terms), ahead of scheduled ones. */
@@ -181,12 +170,6 @@ export async function pauseChecks(appId: number): Promise<number> {
         where tp.keyword_id = k.id and t.app_id <> ${appId}
           and not t.hidden and t.deleted_at is null
           and a.added_at is not null and tp.country = any(a.countries)
-      )
-      and not exists (
-        select 1 from app_keywords ak
-        join apps a on a.track_id = ak.app_id
-        where ak.keyword_id = k.id and ak.app_id <> ${appId}
-          and a.added_at is not null
       )
       and not exists (
         select 1 from brainstorms b where k.id = any(b.keyword_ids)

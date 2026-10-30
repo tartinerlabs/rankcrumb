@@ -2,7 +2,7 @@ import type { TopApp } from "@/db/schema";
 
 // Pure scoring over stored TopApp results (rank order, index 0 = rank 1).
 
-const STOPWORDS = new Set([
+export const STOPWORDS = new Set([
   // en
   "a",
   "an",
@@ -161,15 +161,6 @@ export function difficultyScore(
   return Math.round(
     100 * (0.85 * strength + 0.15 * quality * Math.min(1, strength / 0.5)),
   );
-}
-
-/** open below 35, contested 35-69, crowded 70 and above. */
-export function difficultyLabel(
-  difficulty: number,
-): "open" | "contested" | "crowded" {
-  if (difficulty < 35) return "open";
-  if (difficulty < 70) return "contested";
-  return "crowded";
 }
 
 const CJK =

@@ -15,8 +15,8 @@ const CALL_MARGIN_MS = 15_000;
  * Refresh name, icon and developer of apps that are mine, workspaces or
  * competitors, with one batched lookup per 100 apps per storefront. Every app
  * in a looked-up chunk gets refreshed_at, even when Apple left it out or the
- * call failed, so nothing loops; a throttle stops the run. Then re-reads own
- * listings from App Store Connect when it is configured.
+ * call failed, so nothing loops; a throttle stops the run. Then re-caches own
+ * listings: from App Store Connect when it is configured, else the new name.
  */
 export async function refreshAppMeta(input: {
   deadline: number;
@@ -86,13 +86,12 @@ export async function refreshAppMeta(input: {
     }
   }
 
-  if (ascConfig()) {
-    const doneSet = new Set(done);
-    for (const a of due) {
-      if (!a.isMine || !doneSet.has(a.trackId)) continue;
-      if (Date.now() + CALL_MARGIN_MS > deadline) break;
-      await cacheListing(a.trackId);
-    }
+  // Own apps only; without App Store Connect this stores the refreshed name
+  const doneSet = new Set(done);
+  for (const a of due) {
+    if (!a.isMine || !doneSet.has(a.trackId)) continue;
+    if (Date.now() + CALL_MARGIN_MS > deadline) break;
+    await cacheListing(a.trackId);
   }
   return { refreshed, missing };
 }

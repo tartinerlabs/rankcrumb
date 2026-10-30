@@ -1,6 +1,6 @@
 "use server";
 
-import { act } from "@/actions/act";
+import { type ActionResult, act } from "@/actions/act";
 import {
   type AddTermsInput,
   addTerms,
@@ -8,6 +8,7 @@ import {
   listPaletteKeywords,
   loadHistory,
   localizeMissing,
+  relocalizePhrase,
   restoreTerms,
   setCountries,
   setHidden,
@@ -42,6 +43,14 @@ export async function setPhraseAction(
   phrase: string | null,
 ) {
   return act(() => setPhrase(appId, termId, country, phrase), true);
+}
+
+/** Run AI again for one storefront of a term, replacing a cleared or edited phrase, then queue its check. */
+export async function relocalizePhraseAction(
+  termId: number,
+  country: string,
+): Promise<ActionResult<void>> {
+  return act(() => relocalizePhrase(termId, country), true);
 }
 
 export async function setHiddenAction(

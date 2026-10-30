@@ -111,7 +111,7 @@ export const apps = snakeCase.table(
   ],
 );
 
-// Keywords tracked for an app (refreshed daily)
+// Legacy keywords tracked for an app by the old pages. Retained with its data but no longer read or written at runtime; dropping it is a later decision
 export const appKeywords = snakeCase.table(
   "app_keywords",
   {

@@ -10,13 +10,10 @@ import {
   type TopApp,
   termPhrases,
 } from "@/db/schema";
-import { APPLE_GAP_MS } from "@/lib/gate";
-import { InvalidStorefrontError, search, ThrottledError } from "@/lib/itunes";
+import { search } from "@/lib/itunes";
 import { enqueue } from "@/lib/queue";
-import { difficultyScore, normalize, rankOf, volumeScore } from "@/lib/scoring";
+import { difficultyScore, rankOf, volumeScore } from "@/lib/scoring";
 
-// Gap between Apple requests, to stay under their rate limit
-export { APPLE_GAP_MS };
 const MAX_PHRASE_LENGTH = 100;
 const HOUR_MS = 3_600_000;
 
@@ -31,63 +28,6 @@ export class UserError extends Error {
 /** A phrase in one storefront. */
 export type Pair = { country: string; phrase: string };
 export type AppRow = typeof apps.$inferSelect;
-
-export const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-/** Phrases split on newlines or commas, normalised and deduplicated. */
-export const phrasesField = z
-  .string()
-  .transform((s) => [
-    ...new Set(s.split(/[\n,]/).map(normalize).filter(Boolean)),
-  ])
-  .pipe(
-    z
-      .array(
-        z
-          .string()
-          .max(
-            MAX_PHRASE_LENGTH,
-            `Keep keywords under ${MAX_PHRASE_LENGTH} characters`,
-          ),
-      )
-      .min(1, "Enter at least one keyword"),
-  );
-
-/** Storefront codes split on spaces or commas, lowercased and deduplicated. */
-export const countriesField = z
-  .string()
-  .transform((s) => [
-    ...new Set(
-      s
-        .toLowerCase()
-        .split(/[\s,]+/)
-        .filter(Boolean),
-    ),
-  ])
-  .pipe(
-    z
-      .array(z.string().regex(/^[a-z]{2}$/, "Storefront codes are two letters"))
-      .min(1, "Enter at least one storefront"),
-  );
-
-/** Explicit storefront and phrase pairs, normalised; deduplicate before use. */
-export const pairsField = z.array(
-  z.object({
-    country: z.string().regex(/^[a-z]{2}$/, "Storefront codes are two letters"),
-    phrase: z
-      .string()
-      .transform(normalize)
-      .pipe(
-        z
-          .string()
-          .min(1, "Keywords cannot be empty")
-          .max(
-            MAX_PHRASE_LENGTH,
-            `Keep keywords under ${MAX_PHRASE_LENGTH} characters`,
-          ),
-      ),
-  }),
-);
 
 /** Search Apple once, score the results, then save the keyword and a new check. */
 export async function recordCheck(
@@ -274,11 +214,12 @@ export async function latestChecks(
 
 /**
  * Upsert term phrases on (termId, country). edited:false never overwrites an
- * edited row or a null row (cleared on purpose). Then queue checks of the saved
- * phrases older than 20 hours, ahead of scheduled ones.
+ * edited row or a null row (cleared on purpose) unless overwrite is set. Then
+ * queue checks of the saved phrases older than 20 hours, ahead of scheduled ones.
  */
 export async function savePhrases(
   rows: { termId: number; country: string; phrase: string; edited: boolean }[],
+  opts: { overwrite?: boolean } = {},
 ): Promise<{ saved: number; queued: number }> {
   const parsed = z
     .array(
@@ -315,7 +256,9 @@ export async function savePhrases(
         edited: sql`excluded.edited`,
         updatedAt: sql`now()`,
       },
-      setWhere: sql`excluded.edited or (not term_phrases.edited and term_phrases.keyword_id is not null)`,
+      setWhere: opts.overwrite
+        ? undefined
+        : sql`excluded.edited or (not term_phrases.edited and term_phrases.keyword_id is not null)`,
     })
     .returning({ keywordId: termPhrases.keywordId });
 
@@ -326,156 +269,5 @@ export async function savePhrases(
   return { saved: saved.length, queued };
 }
 
-/**
- * Check tracked keywords with no check in the last 20 hours, stalest first,
- * one at a time with a gap between Apple requests. Stops at the limit, at the
- * deadline or when Apple throttles; the next run picks up the rest.
- * Pass appId to refresh only that app's keywords.
- */
-export async function refreshTracked({
-  appId,
-  limit,
-  deadline,
-}: {
-  appId?: number;
-  limit: number;
-  deadline: number;
-}) {
-  const { rows } = await db.execute<{
-    phrase: string;
-    country: string;
-    my_app: string | null;
-  }>(sql`
-    select k.phrase, k.country,
-      ${
-        appId === undefined
-          ? sql`(select min(a.track_id) from app_keywords ak
-              join apps a on a.track_id = ak.app_id
-              where ak.keyword_id = k.id and a.is_mine)`
-          : sql`${appId}::bigint`
-      } as my_app
-    from keywords k
-    where exists (
-        select 1 from app_keywords ak where ak.keyword_id = k.id
-        ${appId === undefined ? sql`` : sql`and ak.app_id = ${appId}`}
-      )
-      and not exists (
-        select 1 from keyword_checks c
-        where c.keyword_id = k.id and c.checked_at > now() - interval '20 hours'
-      )
-    order by (select max(c.checked_at) from keyword_checks c where c.keyword_id = k.id) asc nulls first
-    limit ${limit + 1}`);
-  // One extra row tells whether more are due than this run takes
-  const more = rows.length > limit;
-  const due = rows.slice(0, limit);
-
-  let checked = 0;
-  let failed = 0;
-  let throttled = false;
-  let lastRequestAt = 0;
-
-  for (const { phrase, country, my_app } of due) {
-    if (Date.now() + APPLE_GAP_MS > deadline) break;
-    const wait = lastRequestAt + APPLE_GAP_MS - Date.now();
-    if (wait > 0) await sleep(wait);
-    lastRequestAt = Date.now();
-    try {
-      await recordCheck(
-        phrase,
-        country,
-        my_app === null ? null : Number(my_app),
-      );
-      checked++;
-    } catch (e) {
-      if (e instanceof ThrottledError) {
-        throttled = true;
-        break;
-      }
-      failed++;
-      if (
-        !(e instanceof InvalidStorefrontError) &&
-        !(e instanceof DOMException && e.name === "TimeoutError")
-      ) {
-        console.error(`refreshTracked ${country} "${phrase}"`, e);
-      }
-    }
-  }
-
-  return { due: due.length, checked, failed, throttled, more };
-}
-
-/** Checks of history kept per tracked keyword. */
+/** Checks of history shown per keyword. */
 export const HISTORY = 30;
-
-export type Check = {
-  checkedAt: Date;
-  volume: number;
-  difficulty: number;
-  /** Result IDs in rank order */
-  results: { id: number }[];
-};
-
-export type Tracked = {
-  keywordId: number;
-  /** Groups local phrases of one keyword across storefronts */
-  label: string;
-  phrase: string;
-  country: string;
-  /** Newest first */
-  checks: Check[];
-};
-
-/** Tracked keywords of an app with their last checks, newest first. */
-export async function loadTracked(appId: number): Promise<Tracked[]> {
-  // Last 30 checks per tracked keyword; only result IDs, not the full lists
-  const { rows } = await db.execute<{
-    keyword_id: number;
-    label: string;
-    phrase: string;
-    country: string;
-    // Raw timestamptz text from db.execute
-    checked_at: string | null;
-    volume: number | null;
-    difficulty: number | null;
-    ids: number[] | null;
-  }>(sql`
-    select k.id as keyword_id, coalesce(ak.label, k.phrase) as label,
-      k.phrase, k.country,
-      c.checked_at, c.volume, c.difficulty, c.ids
-    from app_keywords ak
-    join keywords k on k.id = ak.keyword_id
-    left join lateral (
-      select checked_at, volume, difficulty,
-        jsonb_path_query_array(top_apps, '$[*].id') as ids
-      from keyword_checks
-      where keyword_id = k.id
-      order by checked_at desc
-      limit ${HISTORY}
-    ) c on true
-    where ak.app_id = ${appId}
-    order by label, k.country, c.checked_at desc`);
-
-  const byKeyword = new Map<number, Tracked>();
-  for (const r of rows) {
-    let t = byKeyword.get(r.keyword_id);
-    if (!t) {
-      t = {
-        keywordId: r.keyword_id,
-        label: r.label,
-        phrase: r.phrase,
-        country: r.country,
-        checks: [],
-      };
-      byKeyword.set(r.keyword_id, t);
-    }
-    if (r.checked_at && r.ids) {
-      t.checks.push({
-        checkedAt: new Date(r.checked_at),
-        volume: r.volume ?? 0,
-        difficulty: r.difficulty ?? 0,
-        results: r.ids.map((id) => ({ id })),
-      });
-    }
-  }
-  return [...byKeyword.values()];
-}

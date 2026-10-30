@@ -32,6 +32,7 @@ import {
 import {
   addTermsAction,
   deleteTermsAction,
+  relocalizePhraseAction,
   restoreTermsAction,
   setHiddenAction,
   setPhraseAction,
@@ -270,12 +271,17 @@ export function KeywordsManager({ appId, isMine, board }: Props) {
               total={countries.length}
             />
           ) : row.kind === "country" ? (
-            <PhraseEditor
-              appId={appId}
-              term={row.term}
-              country={row.country}
-              cell={row.cell}
-            />
+            <span className="flex justify-end gap-1">
+              {row.term.mode === "localized" && (
+                <RelocalizeButton term={row.term} country={row.country} />
+              )}
+              <PhraseEditor
+                appId={appId}
+                term={row.term}
+                country={row.country}
+                cell={row.cell}
+              />
+            </span>
           ) : null,
       },
     ],
@@ -573,6 +579,37 @@ function TermActions({
         </Dropdown.Menu>
       </Dropdown.Popover>
     </Dropdown>
+  );
+}
+
+/** Re-runs AI for one storefront, replacing a cleared or edited phrase. */
+function RelocalizeButton({
+  term,
+  country,
+}: {
+  term: TermView;
+  country: string;
+}) {
+  const [isPending, startTransition] = useTransition();
+  const { name } = getCountry(country);
+
+  const relocalize = () => {
+    startTransition(async () => {
+      const res = await relocalizePhraseAction(term.id, country);
+      if (res.error !== undefined) toast.danger(res.error);
+      else toast.success(`Re-localized “${term.label}” for ${name}`);
+    });
+  };
+
+  return (
+    <Button
+      variant="ghost"
+      aria-label={`Re-localize with AI: ${name} phrase for ${term.label}`}
+      isPending={isPending}
+      onPress={relocalize}
+    >
+      Re-localize with AI
+    </Button>
   );
 }
 

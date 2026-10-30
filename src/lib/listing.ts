@@ -4,13 +4,7 @@ import { generateText, Output } from "ai";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import {
-  apps,
-  keywords,
-  type ListingText,
-  termPhrases,
-  terms,
-} from "@/db/schema";
+import { keywords, type ListingText, termPhrases, terms } from "@/db/schema";
 import { describeAiError, MODEL } from "@/lib/ai";
 import {
   AscError,
@@ -24,7 +18,7 @@ import {
 } from "@/lib/asc";
 import { type AppRow, appRow, latestChecks, UserError } from "@/lib/checks";
 import { cacheListing } from "@/lib/meta";
-import { isCovered, normalize } from "@/lib/scoring";
+import { isCovered, normalize, STOPWORDS } from "@/lib/scoring";
 
 const MAX_LOCALES = 5;
 const MAX_OPTIONS = 3;
@@ -56,7 +50,7 @@ type Phrase = {
 
 const EMPTY: ListingText = { name: "", subtitle: "", keywords: "" };
 
-/** The listing per locale: App Store Connect for an own app when connected, else the public name. Stores it on the app. */
+/** The listing per locale: App Store Connect for an own app when connected, else the stored listing or the public name. Writes nothing. */
 export async function loadListing(appId: number): Promise<{
   source: "asc" | "public";
   version: { versionString: string; state: string } | null;
@@ -67,28 +61,31 @@ export async function loadListing(appId: number): Promise<{
   const config = app.isMine ? ascConfig() : null;
   if (config) {
     try {
-      const listing = await readListing(config, appId);
-      // Same value cacheListing stores, without reading App Store Connect twice
-      await db
-        .update(apps)
-        .set({ listing: listing.locales })
-        .where(eq(apps.trackId, appId));
-      return { source: "asc", ...listing };
+      return { source: "asc", ...(await readListing(config, appId)) };
     } catch (e) {
       console.error(`loadListing ${appId}`, e);
     }
   }
-  const locales = config
-    ? (app.listing ?? (await cacheListing(appId)))
-    : await cacheListing(appId);
+  // Without App Store Connect the public name is all there is; keep it current
+  const locales = config ? storedListing(app) : nameOnly(app);
   return { source: "public", version: null, editable: false, locales };
+}
+
+/** The listing cached by addApp, the daily cron and settings changes, else the name only. */
+function storedListing(app: AppRow): Record<string, ListingText> {
+  return app.listing ?? nameOnly(app);
+}
+
+function nameOnly(app: AppRow): Record<string, ListingText> {
+  return { [app.language]: { ...EMPTY, name: app.name } };
 }
 
 /** Main-language keyword field items, then name and subtitle parts split on - : | , that are not terms yet. */
 export async function importCandidates(appId: number): Promise<string[]> {
   const app = await appRow(appId);
-  const listing = app.listing ?? (await cacheListing(appId));
-  const main = listing[app.language] ?? {
+  // Same source as loadListing: the stored copy is only kept fresh by App Store Connect
+  const config = app.isMine ? ascConfig() : null;
+  const main = (config ? storedListing(app) : nameOnly(app))[app.language] ?? {
     ...EMPTY,
     name: app.name,
   };
@@ -136,6 +133,36 @@ function keywordField(raw: string, name: string, subtitle: string): string {
     length += add;
   }
   return out.join(",");
+}
+
+/**
+ * Keyword field items with words already in the name, the subtitle or an
+ * earlier item removed, and the words removed. An item is dropped only when no
+ * word is left. Untouched items keep the user's spelling.
+ */
+function dropRepeats(
+  keywords: string,
+  name: string,
+  subtitle: string,
+): { keywords: string; removed: string[] } {
+  // Stopwords and one-letter bits (Mom's -> s) in the name don't count as used
+  const used = new Set(
+    normalize(`${name} ${subtitle}`)
+      .split(" ")
+      .filter((w) => w.length > 1 && !STOPWORDS.has(w)),
+  );
+  const kept: string[] = [];
+  const removed: string[] = [];
+  for (const item of keywords.split(",")) {
+    const words = normalize(item).split(" ").filter(Boolean);
+    if (words.length === 0) continue;
+    const fresh = words.filter((w) => !used.has(w));
+    removed.push(...words.filter((w) => used.has(w)));
+    for (const w of fresh) used.add(w);
+    if (fresh.length === words.length) kept.push(item);
+    else if (fresh.length > 0) kept.push(fresh.join(" "));
+  }
+  return { keywords: kept.join(","), removed };
 }
 
 /** Reach and difficulty of the phrases a listing covers. */
@@ -423,7 +450,11 @@ const draftsInput = z.object({
     .max(MAX_LOCALES),
 });
 
-/** Save the listing to a draft version in App Store Connect. Never submits for review. UI only. */
+/**
+ * Save the listing to a draft version in App Store Connect, then cache it on
+ * the app. Never submits for review. Keyword field words already in the name or
+ * subtitle are removed first and named in the message. UI only.
+ */
 export async function saveListingDraft(input: {
   appId: number;
   confirmed: true;
@@ -434,24 +465,37 @@ export async function saveListingDraft(input: {
   if (!config) throw new UserError("App Store Connect is not connected");
   const parsed = draftsInput.safeParse(input);
   if (!parsed.success) throw new UserError(parsed.error.issues[0].message);
-  const { appId, drafts, versionString } = parsed.data;
+  const { appId, versionString } = parsed.data;
   await appRow(appId, { mine: true });
+  const removed: string[] = [];
+  const drafts = parsed.data.drafts.map((d) => {
+    const clean = dropRepeats(d.keywords, d.name, d.subtitle);
+    removed.push(...clean.removed);
+    return { ...d, keywords: clean.keywords };
+  });
 
+  let saved: Awaited<ReturnType<typeof saveDraft>>;
   try {
-    const saved = await saveDraft(config, appId, drafts, versionString || null);
-    const where = saved.created
-      ? `new version ${saved.versionString}`
-      : `version ${saved.versionString}`;
-    return {
-      message: [
-        `Saved ${drafts.length} locale${drafts.length === 1 ? "" : "s"} to ${where} as a draft. Nothing was submitted for review.`,
-        ...saved.notes,
-      ].join(" "),
-    };
+    saved = await saveDraft(config, appId, drafts, versionString || null);
   } catch (e) {
     console.error("saveListingDraft", e);
     throw new UserError(
       e instanceof AscError ? e.message : "App Store Connect failed",
     );
   }
+  // Read back so the board's listing group reflects the saved text
+  await cacheListing(appId);
+  const where = saved.created
+    ? `new version ${saved.versionString}`
+    : `version ${saved.versionString}`;
+  return {
+    message: [
+      `Saved ${drafts.length} locale${drafts.length === 1 ? "" : "s"} to ${where} as a draft. Nothing was submitted for review.`,
+      removed.length > 0 &&
+        `Removed repeated words from the keyword field: ${[...new Set(removed)].join(", ")}.`,
+      ...saved.notes,
+    ]
+      .filter(Boolean)
+      .join(" "),
+  };
 }

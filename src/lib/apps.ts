@@ -13,13 +13,7 @@ import {
 } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import {
-  appCompetitors,
-  appKeywords,
-  apps,
-  type Schedule,
-  terms,
-} from "@/db/schema";
+import { appCompetitors, apps, type Schedule, terms } from "@/db/schema";
 import { STOREFRONT_LOCALES } from "@/lib/asc";
 import { type AppRef, appRow, UserError } from "@/lib/checks";
 import {
@@ -310,8 +304,8 @@ export async function restoreApp(id: number): Promise<AppSummary> {
 
 /**
  * Cron: finish removals older than a day (past Undo). An app another workspace
- * compares with keeps its row: its legacy links and own competitors go and it
- * is no longer mine. Otherwise the row is deleted. Terms go with purgeDeleted.
+ * compares with keeps its row: its own competitors go and it is no longer
+ * mine. Otherwise the row is deleted. Terms go with purgeDeleted.
  */
 export async function purgeRemovedApps(): Promise<number> {
   return db.transaction(async (tx) => {
@@ -332,13 +326,12 @@ export async function purgeRemovedApps(): Promise<number> {
       .where(inArray(appCompetitors.competitorId, ids));
     const keep = new Set(kept.map((k) => k.id));
     const drop = ids.filter((i) => !keep.has(i));
-    // Cascades to terms, term phrases, legacy links and competitor rows
+    // Cascades to terms, term phrases, competitor rows and retained legacy app_keywords rows
     if (drop.length > 0)
       await tx.delete(apps).where(inArray(apps.trackId, drop));
     if (keep.size > 0) {
       const strip = [...keep];
       await tx.delete(terms).where(inArray(terms.appId, strip));
-      await tx.delete(appKeywords).where(inArray(appKeywords.appId, strip));
       await tx
         .delete(appCompetitors)
         .where(inArray(appCompetitors.appId, strip));

@@ -1,9 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-import { act } from "@/actions/act";
-import { addApp as addWorkspace } from "@/lib/apps";
 import {
   type AppInfo,
   findApps,
@@ -42,18 +38,4 @@ export async function searchApps(text: string): Promise<SearchResult> {
     console.error("searchApps", e);
     return { apps: [], error: "App Store search failed" };
   }
-}
-
-/** Saves the picked app as a workspace through the shared addApp, then opens it. */
-export async function addApp(
-  id: number,
-  country: string,
-  isMine: boolean,
-): Promise<{ error: string }> {
-  const res = await act(() => addWorkspace({ id, country, mine: isMine }));
-  if (res.error !== undefined) return { error: res.error };
-
-  revalidatePath("/", "layout");
-  // TODO(UI): send res.data.needsCountries to the countries step once it exists
-  redirect(`/apps/${res.data.app.id}/board`);
 }

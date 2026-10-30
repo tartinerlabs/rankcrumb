@@ -32,32 +32,12 @@ export function StarIcon(props: IconProps) {
   );
 }
 
-export function ChartIcon(props: IconProps) {
-  return (
-    <svg aria-hidden="true" {...base} {...props}>
-      <path d="M3 3v18h18" />
-      <path d="m7 15 4-4 3 3 5-6" />
-    </svg>
-  );
-}
-
 export function BulbIcon(props: IconProps) {
   return (
     <svg aria-hidden="true" {...base} {...props}>
       <path d="M9 18h6" />
       <path d="M10 22h4" />
       <path d="M12 2a7 7 0 0 0-4 12.74V16h8v-1.26A7 7 0 0 0 12 2z" />
-    </svg>
-  );
-}
-
-export function FileIcon(props: IconProps) {
-  return (
-    <svg aria-hidden="true" {...base} {...props}>
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-      <path d="M14 2v6h6" />
-      <path d="M8 13h8" />
-      <path d="M8 17h5" />
     </svg>
   );
 }

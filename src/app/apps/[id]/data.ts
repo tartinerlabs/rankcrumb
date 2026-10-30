@@ -55,18 +55,16 @@ export const getWorkspaceApp = cache(
     if (!row || !row.app.added_at) return null;
     const app = row.app;
 
-    // Keywords reach an app through app_keywords and, once terms exist, its terms' local phrases
+    // Keywords reach an app through its terms' local phrases, as in the queue
     const keywordIds: SQL = row.has_terms
       ? sql`
-          select ak.keyword_id from app_keywords ak where ak.app_id = ${trackId}
-          union
           select tp.keyword_id
           from terms t
           join term_phrases tp on tp.term_id = t.id
           where t.app_id = ${trackId}
             and t.deleted_at is null
             and tp.keyword_id is not null`
-      : sql`select ak.keyword_id from app_keywords ak where ak.app_id = ${trackId}`;
+      : sql`select null::integer as keyword_id where false`;
 
     const { rows: statRows } = await db.execute<{
       countries: string[] | null;

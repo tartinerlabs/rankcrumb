@@ -813,6 +813,74 @@ export async function setPhrase(
   ]);
 }
 
+/**
+ * Run AI again for one storefront of a term, replacing its phrase even when the
+ * user cleared or edited it (edited is false after). English storefronts and
+ * english terms get the label; manual terms are refused. The new phrase is
+ * queued unless checked in the last 20 hours.
+ */
+export async function relocalizePhrase(
+  termId: number,
+  country: string,
+): Promise<void> {
+  const id = parse(z.number().int().positive(), termId);
+  const [term] = await db
+    .select({ appId: terms.appId, label: terms.label, mode: terms.mode })
+    .from(terms)
+    .where(and(eq(terms.id, id), isNull(terms.deletedAt)));
+  if (!term) throw new UserError("Keyword not found");
+  if (term.mode === "manual") {
+    throw new UserError("Manual keywords are never localized");
+  }
+  const { country: code } = await researchedCountry(term.appId, country);
+  // english terms keep the label, as localizeMissing gives them
+  if (term.mode === "english") {
+    await savePhrases(
+      [{ termId: id, country: code, phrase: term.label, edited: false }],
+      { overwrite: true },
+    );
+    return;
+  }
+  const result = (await localize([term.label], [code])).find(
+    (r) => r.country === code,
+  );
+  if (!result) {
+    throw new UserError("The AI returned no usable phrase. Try again.");
+  }
+  await savePhrases(
+    [{ termId: id, country: code, phrase: result.phrase, edited: false }],
+    { overwrite: true },
+  );
+}
+
+/** The app's storefronts by how many visible terms have a phrase there, most first; ties keep the app's order. */
+export async function countryWeights(appId: number): Promise<string[]> {
+  const app = await appRow(appId);
+  if (app.countries.length === 0) return [];
+  const rows = await db
+    .select({
+      country: termPhrases.country,
+      n: sql<number>`count(*)::int`,
+    })
+    .from(termPhrases)
+    .innerJoin(terms, eq(terms.id, termPhrases.termId))
+    .where(
+      and(
+        eq(terms.appId, appId),
+        eq(terms.hidden, false),
+        isNull(terms.deletedAt),
+        isNotNull(termPhrases.keywordId),
+        inArray(termPhrases.country, app.countries),
+      ),
+    )
+    .groupBy(termPhrases.country);
+  const count = new Map(rows.map((r) => [r.country, r.n]));
+  // sort is stable, so equal counts stay in saved order
+  return [...app.countries].sort(
+    (a, b) => (count.get(b) ?? 0) - (count.get(a) ?? 0),
+  );
+}
+
 const termIdsSchema = z
   .array(z.number().int().positive())
   .min(1, "Pick at least one keyword")

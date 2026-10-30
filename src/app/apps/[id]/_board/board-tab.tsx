@@ -1,6 +1,7 @@
 import { buttonVariants } from "@heroui/react";
 import { EmptyState } from "@heroui-pro/react";
 import Link from "next/link";
+import { countryWeights } from "@/lib/terms";
 import { BoardGrid } from "./board-grid";
 import { loadBoardView } from "./data";
 
@@ -11,9 +12,16 @@ type Props = {
   countries: string[];
 };
 
-// Columns come from the saved storefronts; the country bar can show tracked ones before any are saved
+// Columns come from the saved storefronts, busiest first; the country bar can show tracked ones before any are saved
 export async function BoardTab({ appId, isMine }: Props) {
-  const board = await loadBoardView(appId, { withTopApps: true });
+  const [view, weighted] = await Promise.all([
+    loadBoardView(appId, { withTopApps: true }),
+    countryWeights(appId),
+  ]);
+  const board = {
+    ...view,
+    countries: weighted.filter((c) => view.countries.includes(c)),
+  };
   if (board.countries.length === 0) {
     return (
       <BoardEmpty
