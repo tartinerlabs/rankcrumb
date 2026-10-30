@@ -188,3 +188,24 @@ export function isCovered(phrase: string, listing: string): boolean {
     (t) => words.has(t) || (CJK.test(t) && compact.includes(t)),
   );
 }
+
+export type NextStep = "keep" | "push" | "try" | "long-shot" | "skip";
+
+/**
+ * Suggested next step for a tracked phrase, first rule that matches:
+ * rank 10 or better keep; volume under 10 skip; rank 11-50 with volume 30+
+ * push; unranked with volume 30+ and difficulty under 70 try; volume 30+ and
+ * difficulty 70+ long-shot. Otherwise null (no rule applies).
+ */
+export function nextStep(
+  rank: number | null,
+  volume: number,
+  difficulty: number,
+): NextStep | null {
+  if (rank !== null && rank <= 10) return "keep";
+  if (volume < 10) return "skip";
+  if (rank !== null && rank <= 50 && volume >= 30) return "push";
+  if (rank === null && volume >= 30 && difficulty < 70) return "try";
+  if (volume >= 30 && difficulty >= 70) return "long-shot";
+  return null;
+}
