@@ -1,4 +1,4 @@
-import { loadBoardView } from "../_board/data";
+import { loadBoardView } from "../board/data";
 import { KeywordsManager } from "./keywords-manager";
 
 type Props = {

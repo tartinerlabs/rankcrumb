@@ -14,7 +14,7 @@ import { Suspense } from "react";
 import { getCountry } from "@/components/countries";
 import { Metric } from "@/components/metric";
 import { RankChip } from "@/components/rank-chip";
-import { TopAppsList } from "../../_board/top-apps-list";
+import { TopAppsList } from "../../board/top-apps-list";
 import { getWorkspaceApp } from "../../data";
 import { type DetailCheck, loadKeywordDetail } from "./data";
 import { RankChart, type RankRow } from "./rank-chart";

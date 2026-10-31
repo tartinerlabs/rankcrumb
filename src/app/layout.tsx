@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { getSidebarApps, getSidebarBrainstorms } from "./_data/apps";
+import { getSidebarApps, getSidebarBrainstorms } from "./data/apps";
 import { AppShell } from "./app-shell";
 import "./globals.css";
 

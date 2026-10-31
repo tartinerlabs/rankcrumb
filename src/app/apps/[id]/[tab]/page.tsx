@@ -1,9 +1,9 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { BoardTab } from "../_board/board-tab";
-import { KeywordsTab } from "../_keywords/keywords-tab";
-import { OptimizeTab } from "../_optimize/optimize-tab";
-import { TrackTab } from "../_track/track-tab";
+import { BoardTab } from "../board/board-tab";
+import { KeywordsTab } from "../keywords/keywords-tab";
+import { OptimizeTab } from "../optimize/optimize-tab";
+import { TrackTab } from "../track/track-tab";
 import { getWorkspaceApp } from "../data";
 import { isTab } from "../tabs";
 

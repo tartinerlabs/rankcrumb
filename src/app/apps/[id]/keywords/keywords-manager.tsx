@@ -41,7 +41,7 @@ import { getCountry } from "@/components/countries";
 import { Metric } from "@/components/metric";
 import { RankChip } from "@/components/rank-chip";
 import { normalize } from "@/lib/scoring";
-import type { BoardView, CellView, TermView } from "../_board/data";
+import type { BoardView, CellView, TermView } from "../board/data";
 
 const REFRESH_MS = 5000;
 

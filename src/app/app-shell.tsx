@@ -13,7 +13,7 @@ import { type ReactNode, Suspense, use, useEffect, useState } from "react";
 import { paletteKeywordsAction } from "@/actions/terms";
 import { BulbIcon } from "@/components/icons";
 import type { PaletteKeyword } from "@/lib/terms";
-import type { SidebarApp, SidebarBrainstorm } from "./_data/apps";
+import type { SidebarApp, SidebarBrainstorm } from "./data/apps";
 
 type Data = {
   apps: Promise<SidebarApp[]>;
