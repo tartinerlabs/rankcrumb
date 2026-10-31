@@ -49,6 +49,7 @@
     "@types/pg": "8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vercel/config": "0.14.1",
     "babel-plugin-react-compiler": "1.0.0",
     "drizzle-kit": "1.0.0-rc.5",
     "tailwindcss": "^4",
