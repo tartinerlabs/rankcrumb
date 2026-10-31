@@ -4,6 +4,7 @@ import { Table } from "@heroui/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { getCountry } from "@/components/countries";
+import { MetricLabel } from "@/components/metric";
 
 export type BrainstormRow = {
   keywordId: number;
@@ -34,8 +35,12 @@ export function BrainstormTable({ rows }: { rows: BrainstormRow[] }) {
           <Table.Header>
             <Table.Column isRowHeader>Keyword</Table.Column>
             <Table.Column>Country</Table.Column>
-            <Table.Column>Demand</Table.Column>
-            <Table.Column>Competition</Table.Column>
+            <Table.Column>
+              <MetricLabel kind="volume" />
+            </Table.Column>
+            <Table.Column>
+              <MetricLabel kind="difficulty" />
+            </Table.Column>
           </Table.Header>
           <Table.Body>
             {rows.map((r) => {

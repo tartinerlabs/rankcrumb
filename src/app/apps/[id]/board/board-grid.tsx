@@ -11,7 +11,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { getCountry } from "@/components/countries";
 import { StarIcon } from "@/components/icons";
-import { Metric } from "@/components/metric";
+import { Metric, MetricLabel } from "@/components/metric";
 import { RankChip } from "@/components/rank-chip";
 import type { BoardView, CellView, TermView } from "./data";
 import { TopAppsList } from "./top-apps-list";
@@ -266,13 +266,17 @@ function BoardCell({ cell, country, appId, isMine }: CellProps) {
               </dd>
             </div>
             <div className="flex flex-col gap-1">
-              <dt className="text-xs text-muted">Competition</dt>
+              <dt className="text-xs text-muted">
+                <MetricLabel kind="difficulty" />
+              </dt>
               <dd>
                 <Metric kind="difficulty" value={cell.difficulty} />
               </dd>
             </div>
             <div className="flex flex-col gap-1">
-              <dt className="text-xs text-muted">Demand</dt>
+              <dt className="text-xs text-muted">
+                <MetricLabel kind="volume" />
+              </dt>
               <dd>
                 <Metric kind="volume" value={cell.volume} />
               </dd>

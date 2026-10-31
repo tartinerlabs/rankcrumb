@@ -38,7 +38,7 @@ import {
   setPhraseAction,
 } from "@/actions/terms";
 import { getCountry } from "@/components/countries";
-import { Metric } from "@/components/metric";
+import { Metric, MetricLabel } from "@/components/metric";
 import { RankChip } from "@/components/rank-chip";
 import { normalize } from "@/lib/scoring";
 import type { BoardView, CellView, TermView } from "../board/data";
@@ -228,7 +228,7 @@ export function KeywordsManager({ appId, isMine, board }: Props) {
       },
       {
         id: "avgVolume",
-        header: "Avg Demand",
+        header: <MetricLabel kind="volume" label="Avg Demand" />,
         allowsSorting: true,
         cell: (row) =>
           row.kind === "term" ? (
@@ -239,7 +239,7 @@ export function KeywordsManager({ appId, isMine, board }: Props) {
       },
       {
         id: "avgDifficulty",
-        header: "Avg Competition",
+        header: <MetricLabel kind="difficulty" label="Avg Competition" />,
         allowsSorting: true,
         cell: (row) =>
           row.kind === "term" ? (
