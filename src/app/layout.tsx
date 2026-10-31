@@ -10,7 +10,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: { default: "Rankcrumb", template: "%s · Rankcrumb" },
+  title: { default: "RankCrumb", template: "%s · RankCrumb" },
   description:
     "Personal App Store keyword tracker: rank, volume and difficulty per storefront.",
 };

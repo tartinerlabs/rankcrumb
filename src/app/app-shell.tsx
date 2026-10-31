@@ -120,7 +120,7 @@ function SidebarNav({
     <>
       <Sidebar.Header>
         <span data-sidebar="label" className="px-2 text-base font-semibold">
-          Rankcrumb
+          RankCrumb
         </span>
       </Sidebar.Header>
       <Sidebar.Content>
