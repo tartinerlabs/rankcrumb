@@ -202,7 +202,7 @@ type CellProps = {
 };
 
 /**
- * Rank with difficulty and volume below; hover for the phrase and top apps.
+ * Rank with competition and demand below; hover for the phrase and top apps.
  * The hover card trigger is not focusable, so the keyword page is the keyboard route.
  */
 function BoardCell({ cell, country, appId, isMine }: CellProps) {
@@ -244,7 +244,7 @@ function BoardCell({ cell, country, appId, isMine }: CellProps) {
             )}
           </span>
           <span className="whitespace-nowrap text-xs text-muted">
-            D <Metric kind="difficulty" value={cell.difficulty} /> · V{" "}
+            C <Metric kind="difficulty" value={cell.difficulty} /> · D{" "}
             <Metric kind="volume" value={cell.volume} />
           </span>
           <span className="sr-only">Details on the keyword page</span>
@@ -266,13 +266,13 @@ function BoardCell({ cell, country, appId, isMine }: CellProps) {
               </dd>
             </div>
             <div className="flex flex-col gap-1">
-              <dt className="text-xs text-muted">Difficulty</dt>
+              <dt className="text-xs text-muted">Competition</dt>
               <dd>
                 <Metric kind="difficulty" value={cell.difficulty} />
               </dd>
             </div>
             <div className="flex flex-col gap-1">
-              <dt className="text-xs text-muted">Volume</dt>
+              <dt className="text-xs text-muted">Demand</dt>
               <dd>
                 <Metric kind="volume" value={cell.volume} />
               </dd>

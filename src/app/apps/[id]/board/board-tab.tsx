@@ -34,7 +34,7 @@ export async function BoardTab({ appId, isMine }: Props) {
     return (
       <BoardEmpty
         title="No Keywords Yet"
-        description="Add keywords in English and each one appears here with its rank, difficulty and volume in every country."
+        description="Add keywords in English and each one appears here with its rank, competition and demand in every country."
         action={{ href: `/apps/${appId}/keywords`, label: "Add Keywords" }}
       />
     );

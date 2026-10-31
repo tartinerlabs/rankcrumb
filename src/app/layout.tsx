@@ -12,7 +12,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: { default: "RankCrumb", template: "%s · RankCrumb" },
   description:
-    "Personal App Store keyword tracker: rank, volume and difficulty per storefront.",
+    "Personal App Store keyword tracker: rank, demand and competition per storefront.",
 };
 
 // HeroUI switches themes with data-theme on <html>; follow the system setting

@@ -34,8 +34,8 @@ export function BrainstormTable({ rows }: { rows: BrainstormRow[] }) {
           <Table.Header>
             <Table.Column isRowHeader>Keyword</Table.Column>
             <Table.Column>Country</Table.Column>
-            <Table.Column>Volume</Table.Column>
-            <Table.Column>Difficulty</Table.Column>
+            <Table.Column>Demand</Table.Column>
+            <Table.Column>Competition</Table.Column>
           </Table.Header>
           <Table.Body>
             {rows.map((r) => {

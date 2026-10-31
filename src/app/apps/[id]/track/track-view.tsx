@@ -196,8 +196,8 @@ function TrackTable({
             ) : null}
             <Table.Column isRowHeader={!showCountry}>Keyword</Table.Column>
             <Table.Column>Rank</Table.Column>
-            <Table.Column>Volume</Table.Column>
-            <Table.Column>Difficulty</Table.Column>
+            <Table.Column>Demand</Table.Column>
+            <Table.Column>Competition</Table.Column>
             <Table.Column>Top 5</Table.Column>
             <Table.Column>Next Step</Table.Column>
           </Table.Header>

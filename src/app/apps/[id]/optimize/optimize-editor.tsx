@@ -352,7 +352,7 @@ export function OptimizeEditor({
                       )}
                     </Stat>
                     <Stat
-                      label="Difficulty"
+                      label="Competition"
                       value={
                         <Metric
                           kind="difficulty"
@@ -606,8 +606,8 @@ function PhraseList({ score: s }: { score: Score }) {
         <Table.Content aria-label="Covered keywords">
           <Table.Header>
             <Table.Column isRowHeader>Phrase</Table.Column>
-            <Table.Column>Volume</Table.Column>
-            <Table.Column>Difficulty</Table.Column>
+            <Table.Column>Demand</Table.Column>
+            <Table.Column>Competition</Table.Column>
           </Table.Header>
           <Table.Body>
             {s.covered.map((p) => (

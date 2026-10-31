@@ -228,7 +228,7 @@ export function KeywordsManager({ appId, isMine, board }: Props) {
       },
       {
         id: "avgVolume",
-        header: "Avg Volume",
+        header: "Avg Demand",
         allowsSorting: true,
         cell: (row) =>
           row.kind === "term" ? (
@@ -239,7 +239,7 @@ export function KeywordsManager({ appId, isMine, board }: Props) {
       },
       {
         id: "avgDifficulty",
-        header: "Avg Difficulty",
+        header: "Avg Competition",
         allowsSorting: true,
         cell: (row) =>
           row.kind === "term" ? (
