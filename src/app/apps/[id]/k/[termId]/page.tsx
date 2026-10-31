@@ -10,6 +10,7 @@ import {
 import { EmptyState } from "@heroui-pro/react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { getCountry } from "@/components/countries";
 import { Metric, MetricLabel } from "@/components/metric";
@@ -44,6 +45,8 @@ async function KeywordDetailView({
   params: Promise<{ id: string; termId: string }>;
 }) {
   const { id, termId } = await params;
+  // Rank history is live; the cached app read no longer marks this dynamic
+  await connection();
   const app = await getWorkspaceApp(id);
   if (!app || !/^\d{1,15}$/.test(termId)) notFound();
   const detail = await loadKeywordDetail(app.trackId, Number(termId));

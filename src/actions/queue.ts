@@ -13,6 +13,11 @@ export async function pauseChecksAction(appId: number) {
   return act(() => pauseChecks(appId), true);
 }
 
+/** After a run: expire the cached reads (header, sidebar) and refresh, as the worker may still be draining other apps. */
+export async function refreshChecksAction() {
+  return act(async () => undefined, true);
+}
+
 /**
  * With an app, queue its paused checks again (same as Check now). Without one,
  * start the worker again, e.g. after a rate-limit pause or a stall.

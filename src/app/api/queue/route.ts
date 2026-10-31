@@ -1,3 +1,4 @@
+import { revalidateTag } from "next/cache";
 import { after, type NextRequest } from "next/server";
 import { BUDGET_MS, work } from "@/lib/queue";
 
@@ -10,6 +11,13 @@ export async function POST(request: NextRequest) {
   if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) {
     return new Response("Unauthorized", { status: 401 });
   }
-  after(() => work(Date.now() + BUDGET_MS));
+  // Expire after the run: a tag expiry only reaches the cache once the after() callback ends
+  after(async () => {
+    try {
+      await work(Date.now() + BUDGET_MS);
+    } finally {
+      revalidateTag("checks", { expire: 0 });
+    }
+  });
   return new Response(null, { status: 202 });
 }

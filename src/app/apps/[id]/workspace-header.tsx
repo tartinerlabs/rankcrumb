@@ -1,4 +1,5 @@
 import { Typography } from "@heroui/react";
+import { io } from "next/cache";
 import { notFound } from "next/navigation";
 import { STOREFRONT_LOCALES } from "@/lib/asc";
 import { CheckControls } from "./check-controls";
@@ -26,6 +27,8 @@ export async function WorkspaceHeader({
   const { id } = await params;
   const app = await getWorkspaceApp(id);
   if (!app) notFound();
+  // checkedAgo reads the clock: keep it request-time now that the app data is cached
+  await io();
 
   return (
     <header className="flex flex-col gap-4">

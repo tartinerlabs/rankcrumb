@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { BoardTab } from "../board/board-tab";
 import { KeywordsTab } from "../keywords/keywords-tab";
@@ -24,6 +25,8 @@ async function TabContent({
   params: Promise<{ id: string; tab: string }>;
 }) {
   const { id, tab } = await params;
+  // Tab data is live (polled while checks run); the cached app read no longer marks this dynamic
+  await connection();
   if (!isTab(tab)) notFound();
   const app = await getWorkspaceApp(id);
   if (!app || (tab === "optimize" && !app.isMine)) notFound();

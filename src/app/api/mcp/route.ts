@@ -1,6 +1,9 @@
 import { timingSafeEqual } from "node:crypto";
 import { createMcpHandler, withMcpAuth } from "mcp-handler";
+import { revalidateTag } from "next/cache";
+import { after } from "next/server";
 import { z } from "zod";
+import { CACHE_TAGS } from "@/actions/act";
 import {
   addApp,
   addCompetitor,
@@ -44,7 +47,7 @@ const json = (data: unknown, isError = false) => ({
   isError,
 });
 
-/** Run a tool body: user-facing failures become an error result, anything else is thrown. */
+/** Run a tool body: user-facing failures become an error result, anything else is thrown. Expires the cached reads afterwards. */
 async function run(fn: () => Promise<unknown>) {
   try {
     return json((await fn()) ?? { ok: true });
@@ -69,6 +72,11 @@ async function run(fn: () => Promise<unknown>) {
       );
     }
     throw e;
+  } finally {
+    // Via after(): legacy clients get a streamed response, which flushes tag expiries before the tool ends
+    after(() => {
+      for (const tag of CACHE_TAGS) revalidateTag(tag, { expire: 0 });
+    });
   }
 }
 

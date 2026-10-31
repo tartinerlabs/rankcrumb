@@ -1,9 +1,12 @@
 "use client";
 
 import { Button, Label, ProgressBar, toast } from "@heroui/react";
-import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
-import { checkNowAction, pauseChecksAction } from "@/actions/queue";
+import {
+  checkNowAction,
+  pauseChecksAction,
+  refreshChecksAction,
+} from "@/actions/queue";
 
 type Progress = {
   pending: number;
@@ -18,7 +21,6 @@ type Props = { trackId: number; checkedText: string | null };
 
 /** Check now, then "Checking X of Y" with a progress bar and Pause while the queue works. */
 export function CheckControls({ trackId, checkedText }: Props) {
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [progress, setProgress] = useState<Progress | null>(null);
   const [poll, setPoll] = useState(0);
@@ -42,8 +44,8 @@ export function CheckControls({ trackId, checkedText }: Props) {
           wasActive = true;
           timer = setTimeout(read, POLL_MS);
         } else if (wasActive) {
-          // Run finished: refresh "Checked … ago" and the tab data
-          router.refresh();
+          // Run finished: expire the cached "Checked … ago" and sidebar, then refresh
+          void refreshChecksAction();
         }
       } catch {
         // Offline or server restart; the next Check now reads again
@@ -56,7 +58,7 @@ export function CheckControls({ trackId, checkedText }: Props) {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [trackId, poll, router]);
+  }, [trackId, poll]);
 
   const checkNow = () => {
     startTransition(async () => {
