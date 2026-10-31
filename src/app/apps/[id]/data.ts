@@ -39,7 +39,7 @@ type AppJson = {
 /** One app for its workspace, or null when the id is unknown or not a workspace (removed or competitor only). Deduped per request. */
 export const getWorkspaceApp = cache(
   async (id: string): Promise<WorkspaceApp | null> => {
-    "use cache";
+    "use cache: remote";
     cacheLife("max");
     cacheTag("apps", "checks");
     if (!/^\d{1,15}$/.test(id)) return null;
