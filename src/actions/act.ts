@@ -1,9 +1,12 @@
 import "server-only";
 
-import { refresh } from "next/cache";
+import { refresh, updateTag } from "next/cache";
 import { UserError } from "@/lib/checks";
 import { gateState, QueuePausedError, ThrottledError } from "@/lib/gate";
 import { InvalidStorefrontError } from "@/lib/itunes";
+
+/** Every cacheTag used by the cached reads; writers expire all of them. */
+export const CACHE_TAGS = ["apps", "checks", "brainstorms"] as const;
 
 export type ActionResult<T> =
   | { data: T; error?: undefined }
@@ -11,7 +14,8 @@ export type ActionResult<T> =
 
 /**
  * Run a Server Action body: user-facing failures become { error }, anything
- * else is thrown. Refreshes the client router after a mutation. Server Actions only.
+ * else is thrown. After a mutation, expires the cached reads (even when the body
+ * throws partway) and refreshes the client router. Server Actions only.
  */
 export async function act<T>(
   fn: () => Promise<T>,
@@ -39,5 +43,7 @@ export async function act<T>(
       };
     }
     throw e;
+  } finally {
+    if (mutates) for (const tag of CACHE_TAGS) updateTag(tag);
   }
 }

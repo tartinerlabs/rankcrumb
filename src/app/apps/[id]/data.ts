@@ -1,7 +1,7 @@
 import "server-only";
 
 import { type SQL, sql } from "drizzle-orm";
-import { connection } from "next/server";
+import { cacheLife, cacheTag } from "next/cache";
 import { cache } from "react";
 import { db } from "@/db";
 import type { ListingText, Schedule } from "@/db/schema";
@@ -39,7 +39,9 @@ type AppJson = {
 /** One app for its workspace, or null when the id is unknown or not a workspace (removed or competitor only). Deduped per request. */
 export const getWorkspaceApp = cache(
   async (id: string): Promise<WorkspaceApp | null> => {
-    await connection();
+    "use cache";
+    cacheLife("minutes");
+    cacheTag("apps", "checks");
     if (!/^\d{1,15}$/.test(id)) return null;
     const trackId = Number(id);
 
