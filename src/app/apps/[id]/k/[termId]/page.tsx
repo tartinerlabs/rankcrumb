@@ -12,7 +12,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { getCountry } from "@/components/countries";
-import { Metric } from "@/components/metric";
+import { Metric, MetricLabel } from "@/components/metric";
 import { RankChip } from "@/components/rank-chip";
 import { TopAppsList } from "../../board/top-apps-list";
 import { getWorkspaceApp } from "../../data";
@@ -192,8 +192,12 @@ function ChecksTable({
           <Table.Header>
             <Table.Column isRowHeader>Checked</Table.Column>
             <Table.Column>Rank</Table.Column>
-            <Table.Column>Demand</Table.Column>
-            <Table.Column>Competition</Table.Column>
+            <Table.Column>
+              <MetricLabel kind="volume" />
+            </Table.Column>
+            <Table.Column>
+              <MetricLabel kind="difficulty" />
+            </Table.Column>
             <Table.Column>Top Apps</Table.Column>
           </Table.Header>
           <Table.Body>

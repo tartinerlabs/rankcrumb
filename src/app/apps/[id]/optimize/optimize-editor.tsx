@@ -20,7 +20,7 @@ import { type ReactNode, useState } from "react";
 import type { Key } from "react-aria-components";
 import { proposeListingAction } from "@/actions/listing";
 import { countryFlag } from "@/components/countries";
-import { Metric } from "@/components/metric";
+import { Metric, MetricLabel } from "@/components/metric";
 import type { ListingText } from "@/db/schema";
 import {
   type Draft,
@@ -352,7 +352,7 @@ export function OptimizeEditor({
                       )}
                     </Stat>
                     <Stat
-                      label="Competition"
+                      label={<MetricLabel kind="difficulty" />}
                       value={
                         <Metric
                           kind="difficulty"
@@ -564,7 +564,7 @@ function Stat({
   value,
   children,
 }: {
-  label: string;
+  label: ReactNode;
   value: ReactNode;
   children?: ReactNode;
 }) {
@@ -606,8 +606,12 @@ function PhraseList({ score: s }: { score: Score }) {
         <Table.Content aria-label="Covered keywords">
           <Table.Header>
             <Table.Column isRowHeader>Phrase</Table.Column>
-            <Table.Column>Demand</Table.Column>
-            <Table.Column>Competition</Table.Column>
+            <Table.Column>
+              <MetricLabel kind="volume" />
+            </Table.Column>
+            <Table.Column>
+              <MetricLabel kind="difficulty" />
+            </Table.Column>
           </Table.Header>
           <Table.Body>
             {s.covered.map((p) => (

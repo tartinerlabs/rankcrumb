@@ -15,7 +15,7 @@ import { EmptyState, RadioButtonGroup, Segment } from "@heroui-pro/react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { getCountry } from "@/components/countries";
-import { Metric } from "@/components/metric";
+import { Metric, MetricLabel } from "@/components/metric";
 import { NextStepChip } from "@/components/next-step-chip";
 import { RankChip } from "@/components/rank-chip";
 import type { LosingTo, TrackRow } from "@/lib/terms";
@@ -196,8 +196,12 @@ function TrackTable({
             ) : null}
             <Table.Column isRowHeader={!showCountry}>Keyword</Table.Column>
             <Table.Column>Rank</Table.Column>
-            <Table.Column>Demand</Table.Column>
-            <Table.Column>Competition</Table.Column>
+            <Table.Column>
+              <MetricLabel kind="volume" />
+            </Table.Column>
+            <Table.Column>
+              <MetricLabel kind="difficulty" />
+            </Table.Column>
             <Table.Column>Top 5</Table.Column>
             <Table.Column>Next Step</Table.Column>
           </Table.Header>
