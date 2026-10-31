@@ -13,7 +13,7 @@ import { UserError } from "@/lib/checks";
 import { normalize } from "@/lib/scoring";
 
 /** The one model every AI feature uses, routed through Vercel AI Gateway. */
-export const MODEL = "anthropic/claude-sonnet-5.5";
+export const MODEL = "openai/gpt-5.4-nano";
 
 /** A short, user-facing message for an AI SDK or AI Gateway failure. */
 export function describeAiError(error: unknown): string {
