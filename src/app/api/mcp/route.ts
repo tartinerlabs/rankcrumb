@@ -487,7 +487,7 @@ const handler = createMcpHandler(
       ({ appId, storefronts }) => run(() => proposeListing(appId, storefronts)),
     );
   },
-  { serverInfo: { name: "aso-keywords", version: "0.2.0" } },
+  { serverInfo: { name: "rankcrumb", version: "0.2.0" } },
 );
 
 /** Accept only the MCP_TOKEN bearer; reject everything when it is unset. */
