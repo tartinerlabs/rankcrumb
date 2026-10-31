@@ -113,7 +113,7 @@ export async function cacheListing(
     try {
       listing = (await readListing(config, appId)).locales;
     } catch (e) {
-      console.error(`cacheListing ${appId}`, e);
+      console.error("cacheListing", appId, e);
       return app.listing ?? listing;
     }
   }
