@@ -113,7 +113,8 @@ export async function cacheListing(
     try {
       listing = (await readListing(config, appId)).locales;
     } catch (e) {
-      console.error("cacheListing", appId, e);
+      // ASC errors name the request path, so the app id stays out of the log
+      console.error("cacheListing", e);
       return app.listing ?? listing;
     }
   }

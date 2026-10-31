@@ -126,7 +126,8 @@ async function asc<T>(
   if (!ALLOWED.some(([m, p]) => m === method && p.test(path))) {
     throw new AscError(`Blocked App Store Connect request ${method} ${path}`);
   }
-  const url = new URL(path, "https://api.appstoreconnect.apple.com");
+  // Fixed host; path is allowlisted above and only appended after it
+  const url = new URL(`https://api.appstoreconnect.apple.com/${path.slice(1)}`);
   for (const [k, v] of Object.entries(query ?? {})) url.searchParams.set(k, v);
   const res = await fetch(url, {
     method,
