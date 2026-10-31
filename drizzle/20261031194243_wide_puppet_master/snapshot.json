@@ -1,0 +1,1814 @@
+{
+  "type": "base",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "5f8bf0c9-fc8e-473c-bdd0-fcf125e26ea6",
+  "prevIds": [
+    "00000000-0000-0000-0000-000000000000"
+  ],
+  "footprints": [
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "app_competitors"
+      ],
+      "writes": [
+        "s|tbl|public.app_competitors",
+        "n|tbl|public.app_competitors",
+        "e|tbl|public.app_competitors",
+        "n|rel|public.app_competitors",
+        "n|type|public.app_competitors",
+        "n|rel|public.app_competitors_pkey"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "app_keywords"
+      ],
+      "writes": [
+        "s|tbl|public.app_keywords",
+        "n|tbl|public.app_keywords",
+        "e|tbl|public.app_keywords",
+        "n|rel|public.app_keywords",
+        "n|type|public.app_keywords",
+        "n|rel|public.app_keywords_pkey"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "apps"
+      ],
+      "writes": [
+        "s|tbl|public.apps",
+        "n|tbl|public.apps",
+        "e|tbl|public.apps",
+        "n|rel|public.apps",
+        "n|type|public.apps",
+        "n|rel|public.apps_pkey"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "brainstorms"
+      ],
+      "writes": [
+        "s|tbl|public.brainstorms",
+        "n|tbl|public.brainstorms",
+        "e|tbl|public.brainstorms",
+        "n|rel|public.brainstorms",
+        "n|type|public.brainstorms",
+        "n|rel|public.brainstorms_pkey"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "check_worker"
+      ],
+      "writes": [
+        "s|tbl|public.check_worker",
+        "n|tbl|public.check_worker",
+        "e|tbl|public.check_worker",
+        "n|rel|public.check_worker",
+        "n|type|public.check_worker",
+        "n|rel|public.check_worker_pkey"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "keyword_checks"
+      ],
+      "writes": [
+        "s|tbl|public.keyword_checks",
+        "n|tbl|public.keyword_checks",
+        "e|tbl|public.keyword_checks",
+        "n|rel|public.keyword_checks",
+        "n|type|public.keyword_checks",
+        "n|rel|public.keyword_checks_pkey"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "keywords"
+      ],
+      "writes": [
+        "s|tbl|public.keywords",
+        "n|tbl|public.keywords",
+        "e|tbl|public.keywords",
+        "n|rel|public.keywords",
+        "n|type|public.keywords",
+        "n|rel|public.keywords_pkey"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "term_phrases"
+      ],
+      "writes": [
+        "s|tbl|public.term_phrases",
+        "n|tbl|public.term_phrases",
+        "e|tbl|public.term_phrases",
+        "n|rel|public.term_phrases",
+        "n|type|public.term_phrases",
+        "n|rel|public.term_phrases_pkey"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "terms"
+      ],
+      "writes": [
+        "s|tbl|public.terms",
+        "n|tbl|public.terms",
+        "e|tbl|public.terms",
+        "n|rel|public.terms",
+        "n|type|public.terms",
+        "n|rel|public.terms_pkey"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "keyword_checks",
+        "keyword_checks_keyword_id_checked_at_index"
+      ],
+      "writes": [
+        "s|idx|public.keyword_checks_keyword_id_checked_at_index",
+        "n|idx|public.keyword_checks_keyword_id_checked_at_index",
+        "e|idx|public.keyword_checks_keyword_id_checked_at_index",
+        "n|rel|public.keyword_checks_keyword_id_checked_at_index"
+      ],
+      "reads": [
+        "n|tbl|public.keyword_checks",
+        "n|sch|public",
+        "n|col|public.keyword_checks.keyword_id",
+        "n|col|public.keyword_checks.checked_at"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "keywords",
+        "keywords_country_phrase_index"
+      ],
+      "writes": [
+        "s|idx|public.keywords_country_phrase_index",
+        "n|idx|public.keywords_country_phrase_index",
+        "e|idx|public.keywords_country_phrase_index",
+        "n|rel|public.keywords_country_phrase_index"
+      ],
+      "reads": [
+        "n|tbl|public.keywords",
+        "n|sch|public",
+        "n|col|public.keywords.country",
+        "n|col|public.keywords.phrase"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "keywords",
+        "keywords_id_country_index"
+      ],
+      "writes": [
+        "s|idx|public.keywords_id_country_index",
+        "n|idx|public.keywords_id_country_index",
+        "e|idx|public.keywords_id_country_index",
+        "n|rel|public.keywords_id_country_index"
+      ],
+      "reads": [
+        "n|tbl|public.keywords",
+        "n|sch|public",
+        "n|col|public.keywords.id",
+        "n|col|public.keywords.country"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "keywords",
+        "keywords_attempts_queue_priority_queued_at_index"
+      ],
+      "writes": [
+        "s|idx|public.keywords_attempts_queue_priority_queued_at_index",
+        "n|idx|public.keywords_attempts_queue_priority_queued_at_index",
+        "e|idx|public.keywords_attempts_queue_priority_queued_at_index",
+        "n|rel|public.keywords_attempts_queue_priority_queued_at_index"
+      ],
+      "reads": [
+        "n|tbl|public.keywords",
+        "n|sch|public",
+        "n|col|public.keywords.attempts",
+        "n|col|public.keywords.queue_priority",
+        "n|col|public.keywords.queued_at"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "term_phrases",
+        "term_phrases_keyword_id_index"
+      ],
+      "writes": [
+        "s|idx|public.term_phrases_keyword_id_index",
+        "n|idx|public.term_phrases_keyword_id_index",
+        "e|idx|public.term_phrases_keyword_id_index",
+        "n|rel|public.term_phrases_keyword_id_index"
+      ],
+      "reads": [
+        "n|tbl|public.term_phrases",
+        "n|sch|public",
+        "n|col|public.term_phrases.keyword_id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "terms",
+        "terms_app_id_label_index"
+      ],
+      "writes": [
+        "s|idx|public.terms_app_id_label_index",
+        "n|idx|public.terms_app_id_label_index",
+        "e|idx|public.terms_app_id_label_index",
+        "n|rel|public.terms_app_id_label_index"
+      ],
+      "reads": [
+        "n|tbl|public.terms",
+        "n|sch|public",
+        "n|col|public.terms.app_id",
+        "n|col|public.terms.label"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "app_competitors"
+      ],
+      "writes": [
+        "s|fk|public.app_competitors.app_competitors_app_id_apps_track_id_fkey",
+        "n|fk|public.app_competitors.app_competitors_app_id_apps_track_id_fkey",
+        "e|fk|public.app_competitors.app_competitors_app_id_apps_track_id_fkey",
+        "n|con|public.app_competitors.app_competitors_app_id_apps_track_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.app_competitors",
+        "n|sch|public",
+        "n|tbl|public.apps",
+        "n|sch|public",
+        "n|col|public.app_competitors.app_id",
+        "n|col|public.apps.track_id",
+        "e|uniqueness|public.apps.track_id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "app_competitors"
+      ],
+      "writes": [
+        "s|fk|public.app_competitors.app_competitors_competitor_id_apps_track_id_fkey",
+        "n|fk|public.app_competitors.app_competitors_competitor_id_apps_track_id_fkey",
+        "e|fk|public.app_competitors.app_competitors_competitor_id_apps_track_id_fkey",
+        "n|con|public.app_competitors.app_competitors_competitor_id_apps_track_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.app_competitors",
+        "n|sch|public",
+        "n|tbl|public.apps",
+        "n|sch|public",
+        "n|col|public.app_competitors.competitor_id",
+        "n|col|public.apps.track_id",
+        "e|uniqueness|public.apps.track_id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "app_keywords"
+      ],
+      "writes": [
+        "s|fk|public.app_keywords.app_keywords_app_id_apps_track_id_fkey",
+        "n|fk|public.app_keywords.app_keywords_app_id_apps_track_id_fkey",
+        "e|fk|public.app_keywords.app_keywords_app_id_apps_track_id_fkey",
+        "n|con|public.app_keywords.app_keywords_app_id_apps_track_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.app_keywords",
+        "n|sch|public",
+        "n|tbl|public.apps",
+        "n|sch|public",
+        "n|col|public.app_keywords.app_id",
+        "n|col|public.apps.track_id",
+        "e|uniqueness|public.apps.track_id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "app_keywords"
+      ],
+      "writes": [
+        "s|fk|public.app_keywords.app_keywords_keyword_id_keywords_id_fkey",
+        "n|fk|public.app_keywords.app_keywords_keyword_id_keywords_id_fkey",
+        "e|fk|public.app_keywords.app_keywords_keyword_id_keywords_id_fkey",
+        "n|con|public.app_keywords.app_keywords_keyword_id_keywords_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.app_keywords",
+        "n|sch|public",
+        "n|tbl|public.keywords",
+        "n|sch|public",
+        "n|col|public.app_keywords.keyword_id",
+        "n|col|public.keywords.id",
+        "e|uniqueness|public.keywords.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "keyword_checks"
+      ],
+      "writes": [
+        "s|fk|public.keyword_checks.keyword_checks_keyword_id_keywords_id_fkey",
+        "n|fk|public.keyword_checks.keyword_checks_keyword_id_keywords_id_fkey",
+        "e|fk|public.keyword_checks.keyword_checks_keyword_id_keywords_id_fkey",
+        "n|con|public.keyword_checks.keyword_checks_keyword_id_keywords_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.keyword_checks",
+        "n|sch|public",
+        "n|tbl|public.keywords",
+        "n|sch|public",
+        "n|col|public.keyword_checks.keyword_id",
+        "n|col|public.keywords.id",
+        "e|uniqueness|public.keywords.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "term_phrases"
+      ],
+      "writes": [
+        "s|fk|public.term_phrases.term_phrases_term_id_terms_id_fkey",
+        "n|fk|public.term_phrases.term_phrases_term_id_terms_id_fkey",
+        "e|fk|public.term_phrases.term_phrases_term_id_terms_id_fkey",
+        "n|con|public.term_phrases.term_phrases_term_id_terms_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.term_phrases",
+        "n|sch|public",
+        "n|tbl|public.terms",
+        "n|sch|public",
+        "n|col|public.term_phrases.term_id",
+        "n|col|public.terms.id",
+        "e|uniqueness|public.terms.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "term_phrases"
+      ],
+      "writes": [
+        "s|fk|public.term_phrases.term_phrases_keyword_id_country_keywords_id_country_fkey",
+        "n|fk|public.term_phrases.term_phrases_keyword_id_country_keywords_id_country_fkey",
+        "e|fk|public.term_phrases.term_phrases_keyword_id_country_keywords_id_country_fkey",
+        "n|con|public.term_phrases.term_phrases_keyword_id_country_keywords_id_country_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.term_phrases",
+        "n|sch|public",
+        "n|tbl|public.keywords",
+        "n|sch|public",
+        "n|col|public.term_phrases.keyword_id",
+        "n|col|public.term_phrases.country",
+        "n|col|public.keywords.id",
+        "n|col|public.keywords.country",
+        "e|uniqueness|public.keywords.country.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "terms"
+      ],
+      "writes": [
+        "s|fk|public.terms.terms_app_id_apps_track_id_fkey",
+        "n|fk|public.terms.terms_app_id_apps_track_id_fkey",
+        "e|fk|public.terms.terms_app_id_apps_track_id_fkey",
+        "n|con|public.terms.terms_app_id_apps_track_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.terms",
+        "n|sch|public",
+        "n|tbl|public.apps",
+        "n|sch|public",
+        "n|col|public.terms.app_id",
+        "n|col|public.apps.track_id",
+        "e|uniqueness|public.apps.track_id"
+      ]
+    }
+  ],
+  "ddl": [
+    {
+      "schema": "public",
+      "name": "app_competitors",
+      "isRlsEnabled": false,
+      "entityType": "tables"
+    },
+    {
+      "schema": "public",
+      "name": "app_keywords",
+      "isRlsEnabled": false,
+      "entityType": "tables"
+    },
+    {
+      "schema": "public",
+      "name": "apps",
+      "isRlsEnabled": false,
+      "entityType": "tables"
+    },
+    {
+      "schema": "public",
+      "name": "brainstorms",
+      "isRlsEnabled": false,
+      "entityType": "tables"
+    },
+    {
+      "schema": "public",
+      "name": "check_worker",
+      "isRlsEnabled": false,
+      "entityType": "tables"
+    },
+    {
+      "schema": "public",
+      "name": "keyword_checks",
+      "isRlsEnabled": false,
+      "entityType": "tables"
+    },
+    {
+      "schema": "public",
+      "name": "keywords",
+      "isRlsEnabled": false,
+      "entityType": "tables"
+    },
+    {
+      "schema": "public",
+      "name": "term_phrases",
+      "isRlsEnabled": false,
+      "entityType": "tables"
+    },
+    {
+      "schema": "public",
+      "name": "terms",
+      "isRlsEnabled": false,
+      "entityType": "tables"
+    },
+    {
+      "schema": "public",
+      "table": "app_competitors",
+      "name": "app_id",
+      "type": "bigint",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "app_competitors",
+      "name": "competitor_id",
+      "type": "bigint",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "app_keywords",
+      "name": "app_id",
+      "type": "bigint",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "app_keywords",
+      "name": "keyword_id",
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "app_keywords",
+      "name": "label",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "app_keywords",
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "apps",
+      "name": "track_id",
+      "type": "bigint",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "apps",
+      "name": "name",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "apps",
+      "name": "icon",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "apps",
+      "name": "is_mine",
+      "type": "boolean",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "false",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "apps",
+      "name": "developer",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "''",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "apps",
+      "name": "storefront",
+      "type": "varchar(2)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'us'",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "apps",
+      "name": "countries",
+      "type": "varchar(2)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 1,
+      "default": "'{}'",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "apps",
+      "name": "language",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'en-US'",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "apps",
+      "name": "schedule",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'daily'",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "apps",
+      "name": "listing",
+      "type": "jsonb",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "apps",
+      "name": "added_at",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "apps",
+      "name": "removed_at",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "apps",
+      "name": "refreshed_at",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "apps",
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "brainstorms",
+      "name": "id",
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": {
+        "type": "always",
+        "name": "brainstorms_id_seq",
+        "increment": "1",
+        "startWith": "1",
+        "minValue": "1",
+        "maxValue": "2147483647",
+        "cache": 1,
+        "cycle": false
+      },
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "brainstorms",
+      "name": "idea",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "brainstorms",
+      "name": "countries",
+      "type": "varchar(2)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 1,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "brainstorms",
+      "name": "keyword_ids",
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 1,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "brainstorms",
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "check_worker",
+      "name": "id",
+      "type": "smallint",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "1",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "check_worker",
+      "name": "next_slot_at",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "check_worker",
+      "name": "paused_until",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "check_worker",
+      "name": "throttles",
+      "type": "smallint",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "0",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "check_worker",
+      "name": "requests",
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "0",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "check_worker",
+      "name": "last_throttled_at",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "check_worker",
+      "name": "worker_id",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "check_worker",
+      "name": "lease_until",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "keyword_checks",
+      "name": "id",
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": {
+        "type": "always",
+        "name": "keyword_checks_id_seq",
+        "increment": "1",
+        "startWith": "1",
+        "minValue": "1",
+        "maxValue": "2147483647",
+        "cache": 1,
+        "cycle": false
+      },
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "keyword_checks",
+      "name": "keyword_id",
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "keyword_checks",
+      "name": "checked_at",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "keyword_checks",
+      "name": "volume",
+      "type": "smallint",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "keyword_checks",
+      "name": "difficulty",
+      "type": "smallint",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "keyword_checks",
+      "name": "top_apps",
+      "type": "jsonb",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "keyword_checks",
+      "name": "app_id",
+      "type": "bigint",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "keyword_checks",
+      "name": "rank",
+      "type": "smallint",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "keywords",
+      "name": "id",
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": {
+        "type": "always",
+        "name": "keywords_id_seq",
+        "increment": "1",
+        "startWith": "1",
+        "minValue": "1",
+        "maxValue": "2147483647",
+        "cache": 1,
+        "cycle": false
+      },
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "keywords",
+      "name": "phrase",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "keywords",
+      "name": "country",
+      "type": "varchar(2)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "keywords",
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "keywords",
+      "name": "queued_at",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "keywords",
+      "name": "queue_priority",
+      "type": "smallint",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "1",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "keywords",
+      "name": "attempts",
+      "type": "smallint",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "0",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "term_phrases",
+      "name": "term_id",
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "term_phrases",
+      "name": "country",
+      "type": "varchar(2)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "term_phrases",
+      "name": "keyword_id",
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "term_phrases",
+      "name": "edited",
+      "type": "boolean",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "false",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "term_phrases",
+      "name": "updated_at",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "terms",
+      "name": "id",
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": {
+        "type": "always",
+        "name": "terms_id_seq",
+        "increment": "1",
+        "startWith": "1",
+        "minValue": "1",
+        "maxValue": "2147483647",
+        "cache": 1,
+        "cycle": false
+      },
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "terms",
+      "name": "app_id",
+      "type": "bigint",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "terms",
+      "name": "label",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "terms",
+      "name": "mode",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'localized'",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "terms",
+      "name": "hidden",
+      "type": "boolean",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "false",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "terms",
+      "name": "deleted_at",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "terms",
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "keyword_checks",
+      "name": "keyword_checks_keyword_id_checked_at_index",
+      "nameExplicit": false,
+      "columns": [
+        {
+          "value": "keyword_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "checked_at",
+          "isExpression": false,
+          "asc": false,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "entityType": "indexes"
+    },
+    {
+      "schema": "public",
+      "table": "keywords",
+      "name": "keywords_country_phrase_index",
+      "nameExplicit": false,
+      "columns": [
+        {
+          "value": "country",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "phrase",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "entityType": "indexes"
+    },
+    {
+      "schema": "public",
+      "table": "keywords",
+      "name": "keywords_id_country_index",
+      "nameExplicit": false,
+      "columns": [
+        {
+          "value": "id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "country",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "entityType": "indexes"
+    },
+    {
+      "schema": "public",
+      "table": "keywords",
+      "name": "keywords_attempts_queue_priority_queued_at_index",
+      "nameExplicit": false,
+      "columns": [
+        {
+          "value": "attempts",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "queue_priority",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "queued_at",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": "\"queued_at\" is not null",
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "entityType": "indexes"
+    },
+    {
+      "schema": "public",
+      "table": "term_phrases",
+      "name": "term_phrases_keyword_id_index",
+      "nameExplicit": false,
+      "columns": [
+        {
+          "value": "keyword_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "entityType": "indexes"
+    },
+    {
+      "schema": "public",
+      "table": "terms",
+      "name": "terms_app_id_label_index",
+      "nameExplicit": false,
+      "columns": [
+        {
+          "value": "app_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "label",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "entityType": "indexes"
+    },
+    {
+      "schema": "public",
+      "table": "app_competitors",
+      "name": "app_competitors_app_id_apps_track_id_fkey",
+      "nameExplicit": false,
+      "columns": [
+        "app_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "apps",
+      "columnsTo": [
+        "track_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "entityType": "fks"
+    },
+    {
+      "schema": "public",
+      "table": "app_competitors",
+      "name": "app_competitors_competitor_id_apps_track_id_fkey",
+      "nameExplicit": false,
+      "columns": [
+        "competitor_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "apps",
+      "columnsTo": [
+        "track_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "entityType": "fks"
+    },
+    {
+      "schema": "public",
+      "table": "app_keywords",
+      "name": "app_keywords_app_id_apps_track_id_fkey",
+      "nameExplicit": false,
+      "columns": [
+        "app_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "apps",
+      "columnsTo": [
+        "track_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "entityType": "fks"
+    },
+    {
+      "schema": "public",
+      "table": "app_keywords",
+      "name": "app_keywords_keyword_id_keywords_id_fkey",
+      "nameExplicit": false,
+      "columns": [
+        "keyword_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "keywords",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "entityType": "fks"
+    },
+    {
+      "schema": "public",
+      "table": "keyword_checks",
+      "name": "keyword_checks_keyword_id_keywords_id_fkey",
+      "nameExplicit": false,
+      "columns": [
+        "keyword_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "keywords",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "entityType": "fks"
+    },
+    {
+      "schema": "public",
+      "table": "term_phrases",
+      "name": "term_phrases_term_id_terms_id_fkey",
+      "nameExplicit": false,
+      "columns": [
+        "term_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "terms",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "entityType": "fks"
+    },
+    {
+      "schema": "public",
+      "table": "term_phrases",
+      "name": "term_phrases_keyword_id_country_keywords_id_country_fkey",
+      "nameExplicit": false,
+      "columns": [
+        "keyword_id",
+        "country"
+      ],
+      "schemaTo": "public",
+      "tableTo": "keywords",
+      "columnsTo": [
+        "id",
+        "country"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "entityType": "fks"
+    },
+    {
+      "schema": "public",
+      "table": "terms",
+      "name": "terms_app_id_apps_track_id_fkey",
+      "nameExplicit": false,
+      "columns": [
+        "app_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "apps",
+      "columnsTo": [
+        "track_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "entityType": "fks"
+    },
+    {
+      "schema": "public",
+      "table": "app_competitors",
+      "name": "app_competitors_pkey",
+      "columns": [
+        "app_id",
+        "competitor_id"
+      ],
+      "nameExplicit": false,
+      "entityType": "pks"
+    },
+    {
+      "schema": "public",
+      "table": "app_keywords",
+      "name": "app_keywords_pkey",
+      "columns": [
+        "app_id",
+        "keyword_id"
+      ],
+      "nameExplicit": false,
+      "entityType": "pks"
+    },
+    {
+      "schema": "public",
+      "table": "term_phrases",
+      "name": "term_phrases_pkey",
+      "columns": [
+        "term_id",
+        "country"
+      ],
+      "nameExplicit": false,
+      "entityType": "pks"
+    },
+    {
+      "schema": "public",
+      "table": "apps",
+      "name": "apps_pkey",
+      "columns": [
+        "track_id"
+      ],
+      "nameExplicit": false,
+      "entityType": "pks"
+    },
+    {
+      "schema": "public",
+      "table": "brainstorms",
+      "name": "brainstorms_pkey",
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "entityType": "pks"
+    },
+    {
+      "schema": "public",
+      "table": "check_worker",
+      "name": "check_worker_pkey",
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "entityType": "pks"
+    },
+    {
+      "schema": "public",
+      "table": "keyword_checks",
+      "name": "keyword_checks_pkey",
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "entityType": "pks"
+    },
+    {
+      "schema": "public",
+      "table": "keywords",
+      "name": "keywords_pkey",
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "entityType": "pks"
+    },
+    {
+      "schema": "public",
+      "table": "terms",
+      "name": "terms_pkey",
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "entityType": "pks"
+    },
+    {
+      "schema": "public",
+      "table": "app_competitors",
+      "name": "app_competitors_self_ck",
+      "value": "\"app_id\" <> \"competitor_id\"",
+      "entityType": "checks"
+    },
+    {
+      "schema": "public",
+      "table": "apps",
+      "name": "apps_schedule_ck",
+      "value": "\"schedule\" in ('off', 'daily', 'weekly')",
+      "entityType": "checks"
+    },
+    {
+      "schema": "public",
+      "table": "check_worker",
+      "name": "check_worker_single_ck",
+      "value": "\"id\" = 1",
+      "entityType": "checks"
+    },
+    {
+      "schema": "public",
+      "table": "keyword_checks",
+      "name": "keyword_checks_volume_ck",
+      "value": "\"volume\" between 0 and 100",
+      "entityType": "checks"
+    },
+    {
+      "schema": "public",
+      "table": "keyword_checks",
+      "name": "keyword_checks_difficulty_ck",
+      "value": "\"difficulty\" between 0 and 100",
+      "entityType": "checks"
+    },
+    {
+      "schema": "public",
+      "table": "keywords",
+      "name": "keywords_country_ck",
+      "value": "\"country\" ~ '^[a-z]{2}$'",
+      "entityType": "checks"
+    },
+    {
+      "schema": "public",
+      "table": "terms",
+      "name": "terms_mode_ck",
+      "value": "\"mode\" in ('localized', 'english', 'manual')",
+      "entityType": "checks"
+    }
+  ]
+}
