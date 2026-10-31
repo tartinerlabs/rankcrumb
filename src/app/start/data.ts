@@ -1,7 +1,7 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
-import { cacheTag } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
 import { db } from "@/db";
 
 export type StartProgress = {
@@ -13,6 +13,7 @@ export type StartProgress = {
 /** Whether any app is saved, and how far the first-run steps got for your own apps (removed ones excluded). */
 export async function getStartProgress(): Promise<StartProgress> {
   "use cache";
+  cacheLife("max");
   cacheTag("apps");
   let r: {
     has_apps: boolean;
