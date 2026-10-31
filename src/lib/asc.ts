@@ -155,7 +155,7 @@ const EDITABLE = "PREPARE_FOR_SUBMISSION";
 async function versions(config: AscConfig, appId: number, editable: boolean) {
   const { data } = await asc<{
     data: (Version & { attributes: { createdDate: string } })[];
-  }>(config, "GET", `/v1/apps/${appId}/appStoreVersions`, {
+  }>(config, "GET", `/v1/apps/${Number(appId)}/appStoreVersions`, {
     query: {
       "filter[platform]": "IOS",
       ...(editable ? { "filter[appVersionState]": EDITABLE } : {}),
@@ -190,7 +190,7 @@ async function appInfo(config: AscConfig, appId: number) {
   const { data } = await asc<{ data: Resource<{ state: string }>[] }>(
     config,
     "GET",
-    `/v1/apps/${appId}/appInfos`,
+    `/v1/apps/${Number(appId)}/appInfos`,
     { query: { "fields[appInfos]": "state" } },
   );
   return data.find((i) => i.attributes.state === EDITABLE) ?? data[0] ?? null;
