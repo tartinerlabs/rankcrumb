@@ -1,7 +1,7 @@
 import "server-only";
 
 import { type SQL, sql } from "drizzle-orm";
-import { cacheLife, cacheTag } from "next/cache";
+import { cacheTag } from "next/cache";
 import { cache } from "react";
 import { db } from "@/db";
 import type { ListingText, Schedule } from "@/db/schema";
@@ -40,7 +40,6 @@ type AppJson = {
 export const getWorkspaceApp = cache(
   async (id: string): Promise<WorkspaceApp | null> => {
     "use cache";
-    cacheLife("minutes");
     cacheTag("apps", "checks");
     if (!/^\d{1,15}$/.test(id)) return null;
     const trackId = Number(id);

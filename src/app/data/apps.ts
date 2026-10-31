@@ -1,7 +1,7 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
-import { cacheLife, cacheTag } from "next/cache";
+import { cacheTag } from "next/cache";
 import { db } from "@/db";
 
 export type SidebarApp = {
@@ -18,7 +18,6 @@ export type SidebarBrainstorm = { id: number; idea: string };
 /** Workspace apps for the sidebar (added on the start screen): yours first, then the rest, oldest first. */
 export async function getSidebarApps(): Promise<SidebarApp[]> {
   "use cache";
-  cacheLife("minutes");
   cacheTag("apps", "checks");
   const { rows: probe } = await db.execute<{ has_terms: boolean }>(
     sql`select to_regclass('term_phrases') is not null as has_terms`,
@@ -74,7 +73,6 @@ export async function getSidebarApps(): Promise<SidebarApp[]> {
 /** Saved brainstorms for the sidebar, newest first. */
 export async function getSidebarBrainstorms(): Promise<SidebarBrainstorm[]> {
   "use cache";
-  cacheLife("minutes");
   cacheTag("brainstorms");
   const { rows } = await db.execute<{ id: number; idea: string }>(sql`
     select id, idea from brainstorms order by created_at desc, id desc`);
