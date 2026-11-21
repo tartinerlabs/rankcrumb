@@ -52,6 +52,7 @@
     "@vercel/config": "0.14.1",
     "babel-plugin-react-compiler": "1.0.0",
     "drizzle-kit": "1.0.0-rc.5",
+    "portless": "0.18.1",
     "tailwindcss": "^4",
     "typescript": "^5"
   },
