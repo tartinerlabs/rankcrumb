@@ -3,13 +3,25 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
+import { getSidebarApps } from "@/app/data/apps";
 import { getBrainstorm } from "@/lib/brainstorms";
 import { UserError } from "@/lib/checks";
 import {
+  BrainstormNext,
   type BrainstormRow,
   BrainstormTable,
   IdeaVerdicts,
 } from "./brainstorm-table";
+
+const TITLE_MAX = 80;
+
+/** The idea's first sentence as the page heading, cut at a word. */
+function ideaTitle(idea: string) {
+  const first = idea.trim().split(/(?<=[.!?])\s/)[0] ?? idea;
+  if (first.length <= TITLE_MAX) return first.replace(/[.!?]$/, "");
+  const boundary = first.lastIndexOf(" ", TITLE_MAX);
+  return `${first.slice(0, boundary > 0 ? boundary : TITLE_MAX)}…`;
+}
 
 export const metadata: Metadata = { title: "Brainstorm" };
 
@@ -18,8 +30,14 @@ export default function BrainstormPage({
 }: PageProps<"/brainstorms/[id]">) {
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 pt-6 pb-12 sm:px-6 sm:pt-8">
-      <Typography.Heading level={1}>Brainstorm</Typography.Heading>
-      <Suspense fallback={<Skeleton className="h-64 w-full" />}>
+      <Suspense
+        fallback={
+          <div className="flex flex-col gap-6">
+            <Skeleton className="h-10 w-2/3" />
+            <Skeleton className="h-64 w-full" />
+          </div>
+        }
+      >
         <BrainstormContent params={params} />
       </Suspense>
     </div>
@@ -42,6 +60,9 @@ async function BrainstormContent({
     throw e;
   }
 
+  const apps = (await getSidebarApps()).filter((a) => a.isMine);
+  const title = ideaTitle(brainstorm.idea);
+
   const rows: BrainstormRow[] = brainstorm.rows.map((r) => ({
     keywordId: r.keywordId,
     country: r.country,
@@ -54,7 +75,12 @@ async function BrainstormContent({
 
   return (
     <div className="flex flex-col gap-4">
-      <Typography.Paragraph>{brainstorm.idea}</Typography.Paragraph>
+      <Typography.Heading level={1}>{title}</Typography.Heading>
+      {title !== brainstorm.idea.trim() && (
+        <Typography.Paragraph color="muted">
+          {brainstorm.idea}
+        </Typography.Paragraph>
+      )}
       {brainstorm.platform === "mac" && (
         <p className="text-sm text-muted">
           Checked against the Mac App Store. Apple publishes no Mac ratings, so
@@ -67,6 +93,10 @@ async function BrainstormContent({
         verdicts={brainstorm.verdicts}
       />
       <BrainstormTable rows={rows} />
+      <BrainstormNext
+        keywords={rows.map(({ keywordId, phrase }) => ({ keywordId, phrase }))}
+        apps={apps.map(({ trackId, name }) => ({ trackId, name }))}
+      />
     </div>
   );
 }

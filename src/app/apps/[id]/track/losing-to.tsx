@@ -11,19 +11,20 @@ type Props = {
   appId: number;
   country: string;
   losingTo: CountryTrack["losingTo"];
+  isMine: boolean;
 };
 
 const compact = new Intl.NumberFormat("en", { notation: "compact" });
 
 /** Apps ahead of this one in a country, most keywords ahead first. */
-export function LosingToCards({ appId, country, losingTo }: Props) {
+export function LosingToCards({ appId, country, losingTo, isMine }: Props) {
   if (losingTo.length === 0) {
     return (
       <EmptyState>
         <EmptyState.Header>
           <EmptyState.Title>No One Is Consistently Ahead</EmptyState.Title>
           <EmptyState.Description>
-            No app ranks above you on most keywords in{" "}
+            No app ranks above {isMine ? "you" : "this app"} on most keywords in{" "}
             {getCountry(country).name}.
           </EmptyState.Description>
         </EmptyState.Header>
@@ -47,7 +48,7 @@ function LosingToCard({
   of,
   ratings,
   competitor,
-}: Omit<Props, "losingTo"> & Props["losingTo"][number]) {
+}: Omit<Props, "losingTo" | "isMine"> & Props["losingTo"][number]) {
   const [isPending, startTransition] = useTransition();
 
   const track = () => {

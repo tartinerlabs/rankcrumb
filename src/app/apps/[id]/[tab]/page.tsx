@@ -2,11 +2,11 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { BoardTab } from "../board/board-tab";
+import { getWorkspaceApp } from "../data";
 import { KeywordsTab } from "../keywords/keywords-tab";
 import { OptimizeTab } from "../optimize/optimize-tab";
-import { TrackTab } from "../track/track-tab";
-import { getWorkspaceApp } from "../data";
 import { isTab } from "../tabs";
+import { TrackTab } from "../track/track-tab";
 
 // Localize (Keywords) and listing proposals (Optimize) are AI server actions on this page
 export const maxDuration = 120;

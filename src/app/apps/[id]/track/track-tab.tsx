@@ -41,7 +41,7 @@ async function ratingCounts(
   );
 }
 
-export async function TrackTab({ appId, countries }: Props) {
+export async function TrackTab({ appId, isMine, countries }: Props) {
   // Every country up front, so switching cards or views needs no round trip
   const loaded = await Promise.all(
     countries.map((country) =>
@@ -66,5 +66,5 @@ export async function TrackTab({ appId, countries }: Props) {
     })),
   }));
 
-  return <TrackView appId={appId} tracks={data} />;
+  return <TrackView appId={appId} isMine={isMine} tracks={data} />;
 }

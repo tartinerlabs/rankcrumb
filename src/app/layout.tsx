@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { getSidebarApps, getSidebarBrainstorms } from "./data/apps";
 import { AppShell } from "./app-shell";
+import { getSidebarApps, getSidebarBrainstorms } from "./data/apps";
 import "./globals.css";
 
 const inter = Inter({

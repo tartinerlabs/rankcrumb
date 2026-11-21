@@ -10,7 +10,6 @@ import {
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { getCountry } from "@/components/countries";
-import { StarIcon } from "@/components/icons";
 import { Metric, MetricLabel } from "@/components/metric";
 import { RankChip } from "@/components/rank-chip";
 import type { BoardView, CellView, TermView } from "./data";
@@ -152,6 +151,7 @@ export function BoardGrid({ appId, isMine, board }: Props) {
             row.kind === "term" ? (
               <BoardCell
                 cell={row.term.cells[code]}
+                termId={row.term.id}
                 country={code}
                 appId={appId}
                 isMine={isMine}
@@ -189,66 +189,56 @@ function Top10({ term }: { term: TermView }) {
   }
   return (
     <span className="whitespace-nowrap tabular-nums">
-      {term.top10}/{term.checked}
+      {term.top10} of {term.checked}
     </span>
   );
 }
 
 type CellProps = {
   cell: CellView | undefined;
+  termId: number;
   country: string;
   appId: number;
   isMine: boolean;
 };
 
 /**
- * Rank with competition and demand below; hover for the phrase and top apps.
- * The hover card trigger is not focusable, so the keyword page is the keyboard route.
+ * Rank with demand and competition below; hover for the phrase and top apps,
+ * click (or Tab and Enter) for the keyword page.
  */
-function BoardCell({ cell, country, appId, isMine }: CellProps) {
+function BoardCell({ cell, termId, country, appId, isMine }: CellProps) {
   if (!cell || cell.phrase === null) {
     return (
-      <span className="text-muted">
-        <span aria-hidden="true">–</span>
-        <span className="sr-only">No phrase</span>
-      </span>
+      <span className="whitespace-nowrap text-xs text-muted">No phrase</span>
     );
   }
   if (!cell.checked) {
     return cell.queued ? (
       <Spinner size="sm" color="current" aria-label="Checking" />
     ) : (
-      <span className="text-muted">
-        <span aria-hidden="true">–</span>
-        <span className="sr-only">Not checked</span>
-      </span>
+      <span className="whitespace-nowrap text-xs text-muted">Not checked</span>
     );
   }
 
   const { flag, name } = getCountry(country);
-  const podium = cell.rank !== null && cell.rank <= 3;
   return (
     <HoverCard>
       <HoverCard.Trigger>
-        <span className="flex flex-col items-start gap-1">
-          <span className="flex items-center gap-1">
-            <RankChip rank={cell.rank} />
-            {podium && (
-              <>
-                <StarIcon width={12} height={12} className="text-success" />
-                <span className="sr-only">Top 3</span>
-              </>
-            )}
-            {cell.queued && (
-              <Spinner size="sm" color="current" aria-label="Checking" />
-            )}
+        <Link href={`/apps/${appId}/k/${termId}`}>
+          <span className="flex flex-col items-start gap-1">
+            <span className="flex items-center gap-1">
+              <RankChip rank={cell.rank} />
+              {cell.queued && (
+                <Spinner size="sm" color="current" aria-label="Checking" />
+              )}
+            </span>
+            {/* Tone stays on the rank chip; the hover card keeps the coloured values */}
+            <span className="whitespace-nowrap text-xs text-muted">
+              D <Metric kind="volume" value={cell.volume} neutral /> · C{" "}
+              <Metric kind="difficulty" value={cell.difficulty} neutral />
+            </span>
           </span>
-          <span className="whitespace-nowrap text-xs text-muted">
-            C <Metric kind="difficulty" value={cell.difficulty} /> · D{" "}
-            <Metric kind="volume" value={cell.volume} />
-          </span>
-          <span className="sr-only">Details on the keyword page</span>
-        </span>
+        </Link>
       </HoverCard.Trigger>
       <HoverCard.Content>
         <div className="flex w-72 flex-col gap-3">
@@ -267,18 +257,18 @@ function BoardCell({ cell, country, appId, isMine }: CellProps) {
             </div>
             <div className="flex flex-col gap-1">
               <dt className="text-xs text-muted">
-                <MetricLabel kind="difficulty" />
-              </dt>
-              <dd>
-                <Metric kind="difficulty" value={cell.difficulty} />
-              </dd>
-            </div>
-            <div className="flex flex-col gap-1">
-              <dt className="text-xs text-muted">
                 <MetricLabel kind="volume" />
               </dt>
               <dd>
                 <Metric kind="volume" value={cell.volume} />
+              </dd>
+            </div>
+            <div className="flex flex-col gap-1">
+              <dt className="text-xs text-muted">
+                <MetricLabel kind="difficulty" />
+              </dt>
+              <dd>
+                <Metric kind="difficulty" value={cell.difficulty} />
               </dd>
             </div>
           </dl>

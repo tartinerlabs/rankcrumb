@@ -16,7 +16,7 @@ import {
   toast,
 } from "@heroui/react";
 import { TrendChip } from "@heroui-pro/react";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import type { Key } from "react-aria-components";
 import { proposeListingAction } from "@/actions/listing";
 import { countryFlag } from "@/components/countries";
@@ -58,6 +58,44 @@ type Props = {
   missingEnv: string[] | null;
 };
 
+/** The listings a draft started from: the main one and each other locale */
+type Bases = { main: ListingText; others: Record<string, ListingText> };
+
+type SavedDraft = {
+  /** A changed main listing drops the draft; a changed locale drops only its row */
+  base: Bases;
+  options: Option[];
+  selected: Key;
+  chosen: string | null;
+  rows: Record<string, Row>;
+  promo: string;
+  description: string;
+};
+
+const draftKey = (appId: number) => `optimize-draft:${appId}`;
+
+// Session storage, so switching tabs keeps the work; it can be blocked or empty
+function readDraft(appId: number, base: Bases): SavedDraft | null {
+  try {
+    const raw = sessionStorage.getItem(draftKey(appId));
+    if (!raw) return null;
+    const draft = JSON.parse(raw) as SavedDraft;
+    return JSON.stringify(draft.base?.main) === JSON.stringify(base.main)
+      ? draft
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeDraft(appId: number, draft: SavedDraft) {
+  try {
+    sessionStorage.setItem(draftKey(appId), JSON.stringify(draft));
+  } catch {
+    // Storage full or blocked: the draft lives only on this page
+  }
+}
+
 const flags = (countries: string[]) => countries.map(countryFlag).join(" ");
 
 const isValid = (l: ListingText) =>
@@ -82,15 +120,78 @@ export function OptimizeEditor({
   const [selected, setSelected] = useState<Key>("current");
   const [chosen, setChosen] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<Key>>(new Set(["names"]));
-  const [rows, setRows] = useState<Record<string, Row>>(() =>
+  const freshRows = (): Record<string, Row> =>
     Object.fromEntries(
       others.map((g) => [g.locale, { listing: g.current, edited: false }]),
-    ),
-  );
+    );
+  const [rows, setRows] = useState<Record<string, Row>>(freshRows);
   const [promo, setPromo] = useState("");
   const [description, setDescription] = useState("");
   // "options" for step 1, "all" or a locale for step 2
   const [pending, setPending] = useState<Set<string>>(new Set());
+
+  // Restore after mount (storage is client-only) and whenever the listing
+  // changes, then save every change. Saving waits until the restore for the
+  // current listing has landed, so an old draft is never written over a new base.
+  const bases: Bases = {
+    main: main.current,
+    others: Object.fromEntries(others.map((g) => [g.locale, g.current])),
+  };
+  const baseKey = JSON.stringify(bases);
+  const [restoredFor, setRestoredFor] = useState<string | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: baseKey stands for bases and others
+  useEffect(() => {
+    const draft = readDraft(appId, bases);
+    const rowsNow = freshRows();
+    if (draft) {
+      setOptions(draft.options);
+      setSelected(draft.selected);
+      setChosen(draft.chosen);
+      // Keep a locale's draft only when that locale is unchanged since
+      for (const [locale, row] of Object.entries(draft.rows)) {
+        if (
+          locale in rowsNow &&
+          JSON.stringify(draft.base.others?.[locale]) ===
+            JSON.stringify(bases.others[locale])
+        ) {
+          rowsNow[locale] = row;
+        }
+      }
+      setPromo(draft.promo);
+      setDescription(draft.description);
+    } else {
+      setOptions([initial]);
+      setSelected("current");
+      setChosen(null);
+      setPromo("");
+      setDescription("");
+    }
+    setRows(rowsNow);
+    setRestoredFor(baseKey);
+  }, [appId, baseKey]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: baseKey stands for bases
+  useEffect(() => {
+    if (restoredFor !== baseKey) return;
+    writeDraft(appId, {
+      base: bases,
+      options,
+      selected,
+      chosen,
+      rows,
+      promo,
+      description,
+    });
+  }, [
+    appId,
+    baseKey,
+    options,
+    selected,
+    chosen,
+    rows,
+    promo,
+    description,
+    restoredFor,
+  ]);
 
   const now = score(main.current, main.phrases);
   const option = options.find((o) => o.id === selected) ?? initial;
@@ -654,11 +755,6 @@ function LongField({
           </span>
         </Description>
       </TextField>
-      <div>
-        <Button variant="outline" isDisabled>
-          Improve with AI
-        </Button>
-      </div>
     </div>
   );
 }
