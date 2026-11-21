@@ -1,4 +1,4 @@
-import type { TopApp } from "@/db/schema";
+import type { Platform, TopApp } from "@/db/schema";
 
 // Pure scoring over stored TopApp results (rank order, index 0 = rank 1).
 
@@ -86,6 +86,39 @@ function titleMatch(phrase: string, title: string): number {
   const hit = pToks.filter((tok) => tokenMatches(tok, tToks, tCompact)).length;
   const share = hit / pToks.length;
   return share === 1 ? 0.85 : share * share * 0.7;
+}
+
+/** Drop a plural s, then -ing/-ment/-er/-ed, then a final e, keeping 3+ letters: trackers/tracking → track, devices/device → devic. */
+function wordStem(word: string): string {
+  let w = word;
+  for (const re of [/(?<!s)s$/, /(ing|ment|er|ed)$/, /e$/]) {
+    const cut = w.replace(re, "");
+    if (cut.length >= 3) w = cut;
+  }
+  return w;
+}
+
+/** Whether the title has every content word of the phrase (or the whole phrase run together), allowing only word endings to differ. */
+function namedFor(phrase: string, title: string): boolean {
+  const p = normalize(phrase);
+  const t = normalize(title);
+  if (!p || !t) return false;
+  const pCompact = p.replaceAll(" ", "");
+  const tCompact = t.replaceAll(" ", "");
+  if (` ${t} `.includes(` ${p} `)) return true;
+  // Run together; any length for scripts written without spaces (Chinese, Japanese, Korean)
+  if (
+    (pCompact.length >= 6 || CJK.test(pCompact)) &&
+    tCompact.includes(pCompact)
+  )
+    return true;
+  const tStems = t.split(" ").map(wordStem);
+  return tokenize(phrase).every(
+    (tok) =>
+      tStems.includes(wordStem(tok)) ||
+      // compound words (de: "kalorienzähler" inside "KI-Kalorienzähler")
+      ((tok.length >= 6 || CJK.test(tok)) && tCompact.includes(tok)),
+  );
 }
 
 /** DCG-style position weight, rank is 1-based. */
@@ -266,4 +299,220 @@ export function nextStep(
   if (rank === null && volume >= 30 && difficulty < 70) return "try";
   if (volume >= 30 && difficulty >= 70) return "long-shot";
   return null;
+}
+
+export type Verdict =
+  | "worth-building"
+  | "worth-a-look"
+  | "tough-market"
+  | "little-demand"
+  | "checking"
+  | "unknown";
+
+/** One phrase of an idea in one storefront: latest Demand and its top 10, null Demand when not checked. */
+export type IdeaPhrase = {
+  phrase: string;
+  demand: number | null;
+  top: TopApp[];
+  queued: boolean;
+};
+
+export type IdeaVerdict = {
+  verdict: Verdict;
+  /** Plain sentences behind the verdict, in display order */
+  reasons: string[];
+  /** Phrases with Demand 50+ and an app named for them in the top 10, highest first */
+  searched: { phrase: string; demand: number }[];
+  /** Apps named for a searched phrase in its top 10, most phrases first, at most 5 */
+  competitors: { app: TopApp; phrases: number }[];
+};
+
+const SEARCHED = 50;
+const MIN_SEARCHED = 3;
+const NEWCOMER_DAYS = 730;
+const NEWCOMER_RATINGS = 1000;
+const STALE_DAYS = 365;
+const WEAK_AVG = 4;
+const WEAK_MIN_RATINGS = 100;
+// Typical ratings of the named apps below this = small market
+const SMALL_MARKET = 100;
+const DAY_MS = 86_400_000;
+
+const count = (n: number, one: string, many = `${one}s`) =>
+  `${n.toLocaleString("en")} ${n === 1 ? one : many}`;
+
+function median(values: number[]): number | null {
+  if (values.length === 0) return null;
+  const s = values.toSorted((a, b) => a - b);
+  const mid = Math.floor(s.length / 2);
+  return s.length % 2 ? s[mid] : Math.round((s[mid - 1] + s[mid]) / 2);
+}
+
+/**
+ * Whether an app idea is worth building in one storefront, by rules over its
+ * phrases (first that matches): checks still running = checking; no Demand
+ * measured = unknown. A phrase counts as searched with Demand 50+ and an app
+ * named for it in its top 10 (else people searching it want something else);
+ * under 3 searched phrases = little demand. Then over the apps named for the
+ * searched phrases: Competition 70+ and no opening = tough market; Competition
+ * under 60, 2+ openings and a typical 100+ ratings = worth building; else worth
+ * a look. An opening is a newcomer (released in the last 2 years, 1,000+
+ * ratings) or a weak leader (under 4.0 stars with 100+ ratings, or not updated
+ * in a year).
+ */
+export function ideaVerdict(
+  phrases: IdeaPhrase[],
+  platform: Platform = "ios",
+  now = Date.now(),
+): IdeaVerdict {
+  // Apple publishes no Mac ratings: Competition from review pace, market size unknown
+  const mac = platform === "mac";
+  const empty = { searched: [], competitors: [] };
+  if (phrases.some((p) => p.queued)) {
+    return {
+      verdict: "checking",
+      reasons: [
+        `${count(phrases.filter((p) => p.queued).length, "phrase")} still being checked.`,
+      ],
+      ...empty,
+    };
+  }
+  const measured = phrases.filter((p) => p.demand !== null);
+  if (measured.length === 0) {
+    return {
+      verdict: "unknown",
+      reasons: ["Demand is not measured for this storefront."],
+      ...empty,
+    };
+  }
+
+  const named = (p: IdeaPhrase) =>
+    p.top.slice(0, 10).filter((a) => namedFor(p.phrase, a.name));
+  const popular = measured
+    .filter((p) => (p.demand as number) >= SEARCHED)
+    .toSorted((a, b) => (b.demand as number) - (a.demand as number));
+  const searchedPhrases = popular.filter((p) => named(p).length > 0);
+  const offTarget = popular.filter((p) => named(p).length === 0);
+  const searched = searchedPhrases.map((p) => ({
+    phrase: p.phrase,
+    demand: p.demand as number,
+  }));
+  const demandReason = `${searched.length} of ${count(measured.length, "phrase")} ${searched.length === 1 ? "has" : "have"} Demand ${SEARCHED} or more and apps named for ${searched.length === 1 ? "it" : "them"}.`;
+  const offTargetReason =
+    offTarget.length > 0 &&
+    `${offTarget.map((p) => `"${p.phrase}"`).join(", ")} ${offTarget.length === 1 ? "is" : "are"} searched, but no app in the top 10 is named for ${offTarget.length === 1 ? "it" : "them"}, so people may want something else.`;
+  if (searched.length < MIN_SEARCHED) {
+    return {
+      verdict: "little-demand",
+      reasons: [
+        demandReason,
+        offTargetReason,
+        "Few people search for apps like this.",
+      ].filter((r): r is string => typeof r === "string"),
+      searched,
+      competitors: [],
+    };
+  }
+
+  // Each app named for a searched phrase once, counted by how many it leads
+  const leaders = new Map<number, { app: TopApp; phrases: number }>();
+  for (const p of searchedPhrases) {
+    for (const app of named(p)) {
+      const seen = leaders.get(app.id);
+      if (seen) seen.phrases++;
+      else leaders.set(app.id, { app, phrases: 1 });
+    }
+  }
+  const apps = [...leaders.values()].map((l) => l.app);
+  const daysAgo = (day: string) => (now - Date.parse(day)) / DAY_MS;
+  const newcomers = apps.filter(
+    (a) =>
+      a.released !== undefined &&
+      daysAgo(a.released) <= NEWCOMER_DAYS &&
+      a.ratings >= NEWCOMER_RATINGS,
+  );
+  const lowRated = apps.filter(
+    (a) => a.ratings >= WEAK_MIN_RATINGS && a.avg < WEAK_AVG,
+  );
+  const stale = apps.filter(
+    (a) => a.updated !== undefined && daysAgo(a.updated) > STALE_DAYS,
+  );
+  const openings = new Set(
+    [...newcomers, ...lowRated, ...stale].map((a) => a.id),
+  ).size;
+  const datesKnown = apps.some((a) => a.released !== undefined);
+
+  // Competition over the named apps only, each at its own rank; other results count as empty
+  const competition = Math.round(
+    searchedPhrases.reduce(
+      (sum, p) =>
+        sum +
+        (mac
+          ? macDifficultyScore(
+              p.phrase,
+              p.top
+                .slice(0, 10)
+                .map((a) =>
+                  namedFor(p.phrase, a.name) ? a : { ...a, reviewsPerDay: 0 },
+                ),
+              now,
+            )
+          : difficultyScore(
+              p.phrase,
+              p.top
+                .slice(0, 10)
+                .map((a) =>
+                  namedFor(p.phrase, a.name) ? a : { ...a, ratings: 0 },
+                ),
+            )),
+      0,
+    ) / searchedPhrases.length,
+  );
+  const typical = mac ? null : median(apps.map((a) => a.ratings));
+
+  const verdict: Verdict =
+    competition >= 70 && openings === 0
+      ? "tough-market"
+      : !mac &&
+          competition < 60 &&
+          openings >= 2 &&
+          typical !== null &&
+          typical >= SMALL_MARKET
+        ? "worth-building"
+        : "worth-a-look";
+
+  const reasons = [
+    demandReason,
+    offTargetReason,
+    `Average Competition of these phrases, counting only the apps named for them, is ${competition}.`,
+    typical !== null &&
+      (typical < SMALL_MARKET
+        ? `The apps named for these phrases have a typical ${count(typical, "rating")}, a small market.`
+        : `The apps named for these phrases have a typical ${count(typical, "rating")}.`),
+    mac &&
+      "Market size is unknown because Apple publishes no Mac ratings, so the verdict is at most Worth a Look.",
+    !mac &&
+      datesKnown &&
+      (newcomers.length > 0
+        ? `${count(newcomers.length, "newcomer")} in the top 10: released in the last 2 years, with ${NEWCOMER_RATINGS.toLocaleString("en")} or more ratings.`
+        : "No app released in the last 2 years has 1,000 or more ratings."),
+    lowRated.length > 0 &&
+      `${count(lowRated.length, "leading app")} ${lowRated.length === 1 ? "is" : "are"} rated under ${WEAK_AVG.toFixed(1)} stars.`,
+    datesKnown &&
+      stale.length > 0 &&
+      `${count(stale.length, "leading app")} ${stale.length === 1 ? "is" : "are"} not updated in more than a year.`,
+    !datesKnown &&
+      "Release and update dates are not known yet. Check again to get them.",
+  ].filter((r): r is string => typeof r === "string");
+
+  return {
+    verdict,
+    reasons,
+    searched,
+    competitors: [...leaders.values()]
+      .toSorted(
+        (a, b) => b.phrases - a.phrases || b.app.ratings - a.app.ratings,
+      )
+      .slice(0, 5),
+  };
 }

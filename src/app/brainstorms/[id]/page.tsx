@@ -5,7 +5,11 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { getBrainstorm } from "@/lib/brainstorms";
 import { UserError } from "@/lib/checks";
-import { type BrainstormRow, BrainstormTable } from "./brainstorm-table";
+import {
+  type BrainstormRow,
+  BrainstormTable,
+  IdeaVerdicts,
+} from "./brainstorm-table";
 
 export const metadata: Metadata = { title: "Brainstorm" };
 
@@ -44,6 +48,7 @@ async function BrainstormContent({
     phrase: r.phrase,
     volume: r.latest?.volume ?? null,
     difficulty: r.latest?.difficulty ?? null,
+    checked: r.latest !== null,
     queued: r.queued,
   }));
 
@@ -57,6 +62,10 @@ async function BrainstormContent({
           they have been around.
         </p>
       )}
+      <IdeaVerdicts
+        brainstormId={brainstorm.id}
+        verdicts={brainstorm.verdicts}
+      />
       <BrainstormTable rows={rows} />
     </div>
   );

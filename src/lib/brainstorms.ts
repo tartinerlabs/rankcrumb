@@ -4,7 +4,7 @@ import { generateText, Output } from "ai";
 import { desc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { brainstorms, keywords, type Platform } from "@/db/schema";
+import { brainstorms, keywords, type Platform, type TopApp } from "@/db/schema";
 import { describeAiError, MODEL } from "@/lib/ai";
 import {
   type Latest,
@@ -15,7 +15,7 @@ import {
   upsertKeywords,
 } from "@/lib/checks";
 import { enqueue } from "@/lib/queue";
-import { normalize } from "@/lib/scoring";
+import { type IdeaVerdict, ideaVerdict, normalize } from "@/lib/scoring";
 
 const MAX_STOREFRONTS = 5;
 const MAX_IDEA = 4000;
@@ -141,7 +141,22 @@ export async function listBrainstorms(): Promise<BrainstormSummary[]> {
   return rows.map((r) => ({ ...r, createdAt: r.createdAt.toISOString() }));
 }
 
-/** A brainstorm with its phrases in AI order and their latest checks. */
+/** Top 10 apps with ratings and dates of each keyword's latest check. */
+async function latestTop(keywordIds: number[]): Promise<Map<number, TopApp[]>> {
+  const ids = [...new Set(keywordIds)];
+  if (ids.length === 0) return new Map();
+  const { rows } = await db.execute<{ keyword_id: number; top: TopApp[] }>(sql`
+    select k.id as keyword_id, jsonb_path_query_array(c.top_apps, '$[0 to 9]') as top
+    from keywords k
+    join lateral (
+      select top_apps from keyword_checks
+      where keyword_id = k.id order by checked_at desc limit 1
+    ) c on true
+    where k.id in ${ids}`);
+  return new Map(rows.map((r) => [r.keyword_id, r.top]));
+}
+
+/** A brainstorm with its phrases in AI order, their latest checks, and a verdict per storefront in its order. */
 export async function getBrainstorm(id: number): Promise<{
   id: number;
   idea: string;
@@ -155,6 +170,7 @@ export async function getBrainstorm(id: number): Promise<{
     latest: Latest | null;
     queued: boolean;
   }[];
+  verdicts: ({ country: string } & IdeaVerdict)[];
 }> {
   if (!idField.safeParse(id).success) {
     throw new UserError("Brainstorm not found");
@@ -162,7 +178,7 @@ export async function getBrainstorm(id: number): Promise<{
   const [b] = await db.select().from(brainstorms).where(eq(brainstorms.id, id));
   if (!b) throw new UserError("Brainstorm not found");
 
-  const [found, latest] = await Promise.all([
+  const [found, latest, tops] = await Promise.all([
     b.keywordIds.length === 0
       ? []
       : db
@@ -175,28 +191,57 @@ export async function getBrainstorm(id: number): Promise<{
           .from(keywords)
           .where(inArray(keywords.id, b.keywordIds)),
     latestChecks(b.keywordIds),
+    latestTop(b.keywordIds),
   ]);
   const byId = new Map(found.map((k) => [k.id, k]));
+  const rows = b.keywordIds.flatMap((keywordId) => {
+    const k = byId.get(keywordId);
+    if (!k) return [];
+    return [
+      {
+        keywordId,
+        country: k.country,
+        phrase: k.phrase,
+        latest: latest.get(keywordId) ?? null,
+        queued: k.queuedAt !== null,
+      },
+    ];
+  });
   return {
     id: b.id,
     idea: b.idea,
     countries: b.countries,
     platform: b.platform,
     createdAt: b.createdAt.toISOString(),
-    rows: b.keywordIds.flatMap((keywordId) => {
-      const k = byId.get(keywordId);
-      if (!k) return [];
-      return [
-        {
-          keywordId,
-          country: k.country,
-          phrase: k.phrase,
-          latest: latest.get(keywordId) ?? null,
-          queued: k.queuedAt !== null,
-        },
-      ];
-    }),
+    rows,
+    verdicts: b.countries.map((country) => ({
+      country,
+      ...ideaVerdict(
+        rows
+          .filter((r) => r.country === country)
+          .map((r) => ({
+            phrase: r.phrase,
+            demand: r.latest?.volume ?? null,
+            top: tops.get(r.keywordId) ?? [],
+            queued: r.queued,
+          })),
+        b.platform,
+      ),
+    })),
   };
+}
+
+/** Queue a brainstorm's phrases not checked in the last hour, ahead of scheduled checks. Returns how many were queued. */
+export async function recheckBrainstorm(id: number): Promise<number> {
+  if (!idField.safeParse(id).success) {
+    throw new UserError("Brainstorm not found");
+  }
+  const [b] = await db
+    .select({ keywordIds: brainstorms.keywordIds })
+    .from(brainstorms)
+    .where(eq(brainstorms.id, id));
+  if (!b) throw new UserError("Brainstorm not found");
+  return enqueue(b.keywordIds, { maxAgeMs: HOUR_MS, priority: 0 });
 }
 
 /** Delete a brainstorm; its keywords and checks are kept. */
