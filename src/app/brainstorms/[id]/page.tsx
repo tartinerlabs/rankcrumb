@@ -50,6 +50,13 @@ async function BrainstormContent({
   return (
     <div className="flex flex-col gap-4">
       <Typography.Paragraph>{brainstorm.idea}</Typography.Paragraph>
+      {brainstorm.platform === "mac" && (
+        <p className="text-sm text-muted">
+          Checked against the Mac App Store. Apple publishes no Mac ratings, so
+          Competition comes from how often top apps get reviews and how long
+          they have been around.
+        </p>
+      )}
       <BrainstormTable rows={rows} />
     </div>
   );

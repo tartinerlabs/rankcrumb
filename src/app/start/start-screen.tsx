@@ -32,6 +32,7 @@ import { createBrainstormAction } from "@/actions/brainstorms";
 import { importCandidatesAction } from "@/actions/listing";
 import { addTermsAction, setCountriesAction } from "@/actions/terms";
 import { COUNTRIES, PRESET_COUNTRIES } from "@/components/countries";
+import type { Platform } from "@/db/schema";
 import type { AppInfo } from "@/lib/itunes";
 import { type SearchResult, searchApps } from "./actions";
 import type { StartProgress } from "./data";
@@ -181,7 +182,8 @@ function AppSearch() {
           <ComboBox.Trigger />
         </ComboBox.InputGroup>
         <Description>
-          Search covers the US store. Links from other stores work too.
+          Search covers the US iPhone store. Paste a link for Mac apps or other
+          stores.
         </Description>
         <ComboBox.Popover>
           <ListBox renderEmptyState={() => emptyText}>
@@ -200,10 +202,16 @@ function AppSearch() {
                     <Label>{app.name}</Label>
                     <Description>
                       {app.developer} ·{" "}
-                      <span className="tabular-nums">
-                        {ratingsFormat.format(app.ratings)}
-                      </span>{" "}
-                      {app.ratings === 1 ? "rating" : "ratings"}
+                      {app.platform === "mac" ? (
+                        "Mac app"
+                      ) : (
+                        <>
+                          <span className="tabular-nums">
+                            {ratingsFormat.format(app.ratings)}
+                          </span>{" "}
+                          {app.ratings === 1 ? "rating" : "ratings"}
+                        </>
+                      )}
                     </Description>
                   </div>
                 </div>
@@ -464,13 +472,14 @@ function CountriesDialog({
 function NicheForm() {
   const router = useRouter();
   const [idea, setIdea] = useState("");
+  const [platform, setPlatform] = useState<Platform>("ios");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const brainstorm = () => {
     setError(null);
     startTransition(async () => {
-      const res = await createBrainstormAction({ idea });
+      const res = await createBrainstormAction({ idea, platform });
       if (res.error !== undefined) {
         setError(res.error);
         return;
@@ -481,6 +490,14 @@ function NicheForm() {
 
   return (
     <div className="flex flex-col items-start gap-3">
+      <Segment
+        aria-label="Store to research"
+        selectedKey={platform}
+        onSelectionChange={(key) => setPlatform(key as Platform)}
+      >
+        <Segment.Item id="ios">iPhone & iPad</Segment.Item>
+        <Segment.Item id="mac">Mac</Segment.Item>
+      </Segment>
       <TextField fullWidth value={idea} onChange={setIdea}>
         <Label>Your Idea</Label>
         <TextArea
@@ -488,7 +505,8 @@ function NicheForm() {
           rows={4}
         />
         <Description>
-          AI suggests 15 to 25 keywords for the US store and checks them.
+          AI suggests 15 to 25 keywords for the US{" "}
+          {platform === "mac" ? "Mac App Store" : "App Store"} and checks them.
         </Description>
       </TextField>
       {error && (
