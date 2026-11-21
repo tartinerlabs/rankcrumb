@@ -48,6 +48,7 @@ async function BrainstormContent({
     phrase: r.phrase,
     volume: r.latest?.volume ?? null,
     difficulty: r.latest?.difficulty ?? null,
+    checked: r.latest !== null,
     queued: r.queued,
   }));
 

@@ -14,6 +14,8 @@ export type BrainstormRow = {
   phrase: string;
   volume: number | null;
   difficulty: number | null;
+  /** Has a check, even when Demand was not measured */
+  checked: boolean;
   queued: boolean;
 };
 
@@ -54,10 +56,18 @@ export function BrainstormTable({ rows }: { rows: BrainstormRow[] }) {
                     <span aria-hidden="true">{flag}</span> {name}
                   </Table.Cell>
                   <Table.Cell>
-                    <Score value={r.volume} queued={r.queued} />
+                    <Score
+                      value={r.volume}
+                      queued={r.queued}
+                      checked={r.checked}
+                    />
                   </Table.Cell>
                   <Table.Cell>
-                    <Score value={r.difficulty} queued={r.queued} />
+                    <Score
+                      value={r.difficulty}
+                      queued={r.queued}
+                      checked={r.checked}
+                    />
                   </Table.Cell>
                 </Table.Row>
               );
@@ -69,10 +79,20 @@ export function BrainstormTable({ rows }: { rows: BrainstormRow[] }) {
   );
 }
 
-function Score({ value, queued }: { value: number | null; queued: boolean }) {
+function Score({
+  value,
+  queued,
+  checked,
+}: {
+  value: number | null;
+  queued: boolean;
+  checked: boolean;
+}) {
   if (value === null) {
     return (
-      <span className="text-muted">{queued ? "Checking…" : "Not checked"}</span>
+      <span className="text-muted">
+        {queued ? "Checking…" : checked ? "—" : "Not checked"}
+      </span>
     );
   }
   return <span className="tabular-nums">{value}</span>;
