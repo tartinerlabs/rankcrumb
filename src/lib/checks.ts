@@ -1,19 +1,29 @@
 import "server-only";
 
-import { eq, sql } from "drizzle-orm";
+import { and, eq, gt, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import {
   apps,
   keywordChecks,
   keywords,
+  type Platform,
+  reviewPace,
   type TopApp,
   termPhrases,
+  terms,
 } from "@/db/schema";
-import { search, searchHints } from "@/lib/itunes";
+import { SlotDeadlineError } from "@/lib/gate";
+import {
+  reviewsPerDay,
+  search,
+  searchHints,
+  ThrottledError,
+} from "@/lib/itunes";
 import { enqueue } from "@/lib/queue";
 import {
   difficultyScore,
+  macDifficultyScore,
   normalize,
   popularityScore,
   rankOf,
@@ -26,6 +36,12 @@ const POPULARITY_BUDGET_MS = 15_000;
 // Room left after autocomplete before the caller's deadline, as the worker's stop margin
 const POPULARITY_DEADLINE_MARGIN_MS = 15_000;
 const HOUR_MS = 3_600_000;
+// Mac Competition: review pace of the top apps, only for phrases people search, kept a week
+const PACE_TOP = 5;
+const PACE_MIN_DEMAND = 50;
+const PACE_MAX_AGE_MS = 7 * 24 * HOUR_MS;
+// A whole check stays inside the worker's 60s lease, which is only renewed between keywords
+const PACE_BUDGET_MS = 45_000;
 
 /** A failure the user should see as is (bad input, missing app). */
 export class UserError extends Error {
@@ -35,8 +51,11 @@ export class UserError extends Error {
   }
 }
 
-/** A phrase in one storefront. */
-export type Pair = { country: string; phrase: string };
+/** A phrase in one storefront of one store. */
+export type Pair = { country: string; phrase: string; platform: Platform };
+
+/** Map key of a keyword row, as returned by upsertKeywords. */
+export const pairKey = (p: Pair) => `${p.platform}:${p.country}:${p.phrase}`;
 export type AppRow = typeof apps.$inferSelect;
 
 /**
@@ -48,6 +67,7 @@ export type AppRow = typeof apps.$inferSelect;
 async function popularity(
   phrase: string,
   country: string,
+  platform: Platform,
   deadline?: number,
 ): Promise<number | null> {
   const budget = Math.min(
@@ -67,6 +87,7 @@ async function popularity(
     const hints = await searchHints(
       chars.slice(0, typed).join(""),
       country,
+      platform,
       signal,
     );
     if (hints === null) return null;
@@ -98,29 +119,113 @@ async function popularity(
   }
 }
 
+/**
+ * Reviews per day of each app in one storefront: cached for a week, else read
+ * from Apple's reviews feed and cached. An app whose feed fails, or that gets
+ * no request slot before the deadline, is left out; throttles are thrown so
+ * the check is retried.
+ */
+async function paces(
+  ids: number[],
+  country: string,
+  deadline: number,
+): Promise<Map<number, number>> {
+  const found = new Map<number, number>();
+  if (ids.length === 0) return found;
+  const cached = await db
+    .select({ trackId: reviewPace.trackId, perDay: reviewPace.perDay })
+    .from(reviewPace)
+    .where(
+      and(
+        inArray(reviewPace.trackId, ids),
+        eq(reviewPace.country, country),
+        gt(reviewPace.checkedAt, new Date(Date.now() - PACE_MAX_AGE_MS)),
+      ),
+    );
+  for (const c of cached) found.set(c.trackId, c.perDay);
+  for (const id of ids) {
+    if (found.has(id)) continue;
+    let perDay: number;
+    try {
+      perDay = await reviewsPerDay(id, country, { deadline });
+    } catch (e) {
+      // Out of time: the rest are scored by age, as when Demand is low
+      if (e instanceof SlotDeadlineError) break;
+      if (e instanceof ThrottledError) throw e;
+      console.warn(`review pace ${country} ${id}`, e);
+      continue;
+    }
+    found.set(id, perDay);
+    await db
+      .insert(reviewPace)
+      .values({ trackId: id, country, perDay })
+      .onConflictDoUpdate({
+        target: [reviewPace.trackId, reviewPace.country],
+        set: { perDay, checkedAt: sql`now()` },
+      });
+  }
+  return found;
+}
+
+/**
+ * Competition on the Mac App Store, which publishes no ratings: review pace of
+ * the top 5 when Demand is 50 or more (stored on those apps), fetched until
+ * `deadline`; other apps from app age and updates alone.
+ */
+async function macDifficulty(
+  phrase: string,
+  country: string,
+  topApps: TopApp[],
+  demand: number | null,
+  deadline: number,
+): Promise<number> {
+  if (demand !== null && demand >= PACE_MIN_DEMAND) {
+    const top = topApps.slice(0, PACE_TOP);
+    const pace = await paces(
+      top.map((a) => a.id),
+      country,
+      deadline,
+    );
+    for (const app of top) {
+      const perDay = pace.get(app.id);
+      if (perDay !== undefined)
+        app.reviewsPerDay = Math.round(perDay * 1000) / 1000;
+    }
+  }
+  return macDifficultyScore(phrase, topApps);
+}
+
 /** Search Apple once and read its autocomplete alongside, score both, then save the keyword and a new check. */
 export async function recordCheck(
   phrase: string,
   country: string,
+  platform: Platform,
   appId: number | null,
   opts?: { deadline?: number },
 ) {
+  const paceDeadline = Math.min(
+    Date.now() + PACE_BUDGET_MS,
+    opts?.deadline ?? Number.POSITIVE_INFINITY,
+  );
   // Autocomplete is another Apple host and never throws, so it runs during the gate wait
   const [topApps, demand] = await Promise.all([
-    search(phrase, country, opts),
-    popularity(phrase, country, opts?.deadline),
+    search(phrase, country, platform, opts),
+    popularity(phrase, country, platform, opts?.deadline),
   ]);
   // Old title-targeting score, still stored in the volume column; Demand reads popularity
   const volume = volumeScore(phrase, topApps);
-  const difficulty = difficultyScore(phrase, topApps);
+  const difficulty =
+    platform === "mac"
+      ? await macDifficulty(phrase, country, topApps, demand, paceDeadline)
+      : difficultyScore(phrase, topApps);
   const rank = appId === null ? null : rankOf(topApps, appId);
 
   const [{ id: keywordId }] = await db
     .insert(keywords)
     // No-op update so RETURNING gives the id of an existing row too
-    .values({ phrase, country })
+    .values({ phrase, country, platform })
     .onConflictDoUpdate({
-      target: [keywords.country, keywords.phrase],
+      target: [keywords.platform, keywords.country, keywords.phrase],
       set: { phrase: sql`excluded.phrase` },
     })
     .returning({ id: keywords.id });
@@ -178,37 +283,41 @@ const pairSchema = z.object({
       MAX_PHRASE_LENGTH,
       `Keep keywords under ${MAX_PHRASE_LENGTH} characters`,
     ),
+  platform: z.enum(["ios", "mac"]),
 });
 
-/** Upsert keyword rows; id per `${country}:${phrase}`. Phrases must already be normalised. */
+/** Upsert keyword rows; id per pairKey. Phrases must already be normalised. */
 export async function upsertKeywords(
   pairs: Pair[],
 ): Promise<Map<string, number>> {
   const parsed = z.array(pairSchema).safeParse(pairs);
   if (!parsed.success) throw new UserError(parsed.error.issues[0].message);
   const ids = new Map<string, number>();
-  // One per storefront and phrase; a second insert of the same row would fail
-  const unique = [
-    ...new Map(
-      parsed.data.map((p) => [`${p.country}:${p.phrase}`, p]),
-    ).values(),
-  ];
+  // One per store, storefront and phrase; a second insert of the same row would fail
+  const unique = [...new Map(parsed.data.map((p) => [pairKey(p), p])).values()];
   if (unique.length === 0) return ids;
 
   const rows = await db
     .insert(keywords)
-    .values(unique.map(({ country, phrase }) => ({ country, phrase })))
+    .values(
+      unique.map(({ country, phrase, platform }) => ({
+        country,
+        phrase,
+        platform,
+      })),
+    )
     // No-op update so RETURNING gives the ids of existing rows too
     .onConflictDoUpdate({
-      target: [keywords.country, keywords.phrase],
+      target: [keywords.platform, keywords.country, keywords.phrase],
       set: { phrase: sql`excluded.phrase` },
     })
     .returning({
       id: keywords.id,
       country: keywords.country,
       phrase: keywords.phrase,
+      platform: keywords.platform,
     });
-  for (const r of rows) ids.set(`${r.country}:${r.phrase}`, r.id);
+  for (const r of rows) ids.set(pairKey(r), r.id);
   return ids;
 }
 
@@ -296,7 +405,7 @@ export async function latestChecks(
 }
 
 /**
- * Upsert term phrases on (termId, country). edited:false never overwrites an
+ * Upsert term phrases on (termId, country), as keywords of the term's app store. edited:false never overwrites an
  * edited row or a null row (cleared on purpose) unless overwrite is set. Then
  * queue checks of the saved phrases older than 20 hours, ahead of scheduled ones.
  */
@@ -306,7 +415,7 @@ export async function savePhrases(
 ): Promise<{ saved: number; queued: number }> {
   const parsed = z
     .array(
-      pairSchema.extend({
+      pairSchema.omit({ platform: true }).extend({
         termId: z.number().int().positive(),
         edited: z.boolean(),
       }),
@@ -321,14 +430,27 @@ export async function savePhrases(
   ];
   if (unique.length === 0) return { saved: 0, queued: 0 };
 
-  const ids = await upsertKeywords(unique);
+  // A Mac app's phrases are Mac keywords
+  const termIds = [...new Set(unique.map((r) => r.termId))];
+  const stores = await db
+    .select({ termId: terms.id, platform: apps.platform })
+    .from(terms)
+    .innerJoin(apps, eq(apps.trackId, terms.appId))
+    .where(inArray(terms.id, termIds));
+  const platformOf = new Map(stores.map((t) => [t.termId, t.platform]));
+  const pairs = unique.map((r) => ({
+    ...r,
+    platform: platformOf.get(r.termId) ?? ("ios" as const),
+  }));
+
+  const ids = await upsertKeywords(pairs);
   const saved = await db
     .insert(termPhrases)
     .values(
-      unique.map((r) => ({
+      pairs.map((r) => ({
         termId: r.termId,
         country: r.country,
-        keywordId: ids.get(`${r.country}:${r.phrase}`) as number,
+        keywordId: ids.get(pairKey(r)) as number,
         edited: r.edited,
       })),
     )

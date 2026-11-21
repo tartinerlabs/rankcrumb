@@ -1,4 +1,4 @@
-import { Typography } from "@heroui/react";
+import { Chip, Typography } from "@heroui/react";
 import { io } from "next/cache";
 import { notFound } from "next/navigation";
 import { STOREFRONT_LOCALES } from "@/lib/asc";
@@ -42,9 +42,16 @@ export async function WorkspaceHeader({
           className="size-12 shrink-0 rounded-xl"
         />
         <div className="min-w-0 flex-1">
-          <Typography.Heading level={1}>
-            <span className="block truncate">{app.name}</span>
-          </Typography.Heading>
+          <div className="flex min-w-0 items-center gap-2">
+            <Typography.Heading level={1} className="min-w-0">
+              <span className="block truncate">{app.name}</span>
+            </Typography.Heading>
+            {app.platform === "mac" && (
+              <Chip size="sm" variant="soft">
+                Mac
+              </Chip>
+            )}
+          </div>
           {app.subtitle && (
             <p className="truncate text-sm text-muted">{app.subtitle}</p>
           )}

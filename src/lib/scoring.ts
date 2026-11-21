@@ -1,4 +1,4 @@
-import type { TopApp } from "@/db/schema";
+import type { Platform, TopApp } from "@/db/schema";
 
 // Pure scoring over stored TopApp results (rank order, index 0 = rank 1).
 
@@ -212,6 +212,55 @@ export function difficultyScore(
   );
 }
 
+/** Reviews per day mapped to 0..1 on a log scale of reviews a year: none -> 0, 10,000+ a year -> 1. */
+const paceStrength = (perDay: number) =>
+  Math.min(1, Math.max(0, Math.log10(1 + perDay * 365) / 4));
+
+const YEAR_MS = 365 * 86_400_000;
+
+/**
+ * Strength of an app with no measured review pace, 0..0.6 (capped below a
+ * busy app's pace): years on the store (5+ = full) halved when not updated in
+ * a year. 0.3 when the dates are missing.
+ */
+function ageStrength(app: Pick<TopApp, "released" | "updated">, now: number) {
+  if (!app.released) return 0.3;
+  const years = (now - Date.parse(app.released)) / YEAR_MS;
+  const fresh = app.updated && now - Date.parse(app.updated) < YEAR_MS;
+  return 0.6 * Math.min(1, Math.max(0, years / 5)) * (fresh ? 1 : 0.5);
+}
+
+/**
+ * Competition 0-100 on the Mac App Store, where Apple publishes no ratings.
+ * Position-weighted strength of the top 10, scaled by how strongly each app
+ * targets the phrase (as in difficultyScore): review pace when measured
+ * (reviewsPerDay), else years on the store and recent updates.
+ */
+export function macDifficultyScore(
+  phrase: string,
+  results: Pick<TopApp, "name" | "released" | "updated" | "reviewsPerDay">[],
+  now = Date.now(),
+  topN = 10,
+): number {
+  const top = results.slice(0, topN);
+  if (top.length === 0) return 0;
+  let num = 0;
+  let den = 0;
+  for (let i = 0; i < topN; i++) {
+    const w = posWeight(i + 1);
+    den += w;
+    const r = top[i];
+    if (!r) continue;
+    const relevance = 0.3 + 0.7 * titleMatch(phrase, r.name);
+    const strength =
+      r.reviewsPerDay === undefined
+        ? ageStrength(r, now)
+        : paceStrength(r.reviewsPerDay);
+    num += w * relevance * strength;
+  }
+  return Math.round((100 * num) / den);
+}
+
 const CJK =
   /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
 
@@ -313,8 +362,11 @@ function median(values: number[]): number | null {
  */
 export function ideaVerdict(
   phrases: IdeaPhrase[],
+  platform: Platform = "ios",
   now = Date.now(),
 ): IdeaVerdict {
+  // Apple publishes no Mac ratings: Competition from review pace, market size unknown
+  const mac = platform === "mac";
   const empty = { searched: [], competitors: [] };
   if (phrases.some((p) => p.queued)) {
     return {
@@ -395,23 +447,34 @@ export function ideaVerdict(
     searchedPhrases.reduce(
       (sum, p) =>
         sum +
-        difficultyScore(
-          p.phrase,
-          p.top
-            .slice(0, 10)
-            .map((a) =>
-              namedFor(p.phrase, a.name) ? a : { ...a, ratings: 0 },
-            ),
-        ),
+        (mac
+          ? macDifficultyScore(
+              p.phrase,
+              p.top
+                .slice(0, 10)
+                .map((a) =>
+                  namedFor(p.phrase, a.name) ? a : { ...a, reviewsPerDay: 0 },
+                ),
+              now,
+            )
+          : difficultyScore(
+              p.phrase,
+              p.top
+                .slice(0, 10)
+                .map((a) =>
+                  namedFor(p.phrase, a.name) ? a : { ...a, ratings: 0 },
+                ),
+            )),
       0,
     ) / searchedPhrases.length,
   );
-  const typical = median(apps.map((a) => a.ratings));
+  const typical = mac ? null : median(apps.map((a) => a.ratings));
 
   const verdict: Verdict =
     competition >= 70 && openings === 0
       ? "tough-market"
-      : competition < 60 &&
+      : !mac &&
+          competition < 60 &&
           openings >= 2 &&
           typical !== null &&
           typical >= SMALL_MARKET
@@ -426,7 +489,10 @@ export function ideaVerdict(
       (typical < SMALL_MARKET
         ? `The apps named for these phrases have a typical ${count(typical, "rating")}, a small market.`
         : `The apps named for these phrases have a typical ${count(typical, "rating")}.`),
-    datesKnown &&
+    mac &&
+      "Market size is unknown because Apple publishes no Mac ratings, so the verdict is at most Worth a Look.",
+    !mac &&
+      datesKnown &&
       (newcomers.length > 0
         ? `${count(newcomers.length, "newcomer")} in the top 10: released in the last 2 years, with ${NEWCOMER_RATINGS.toLocaleString("en")} or more ratings.`
         : "No app released in the last 2 years has 1,000 or more ratings."),

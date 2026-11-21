@@ -417,7 +417,7 @@ const handler = createMcpHandler(
       {
         title: "Brainstorm keywords",
         description:
-          "Save an app idea and get 15 to 25 AI keyword phrases for it, in each storefront's language. Phrases are queued for checking; read them with get_brainstorm.",
+          "Save an app idea and get 15 to 25 AI keyword phrases for it, in each storefront's language. Phrases are queued for checking against the chosen store; read them with get_brainstorm.",
         inputSchema: z.object({
           idea: z.string().describe("The app idea, 20 to 4000 characters"),
           storefronts: z
@@ -425,10 +425,16 @@ const handler = createMcpHandler(
             .min(1)
             .optional()
             .describe("Two-letter storefront codes, at most 5 (default us)"),
+          platform: z
+            .enum(["ios", "mac"])
+            .optional()
+            .describe(
+              "Store to research: ios (iPhone and iPad, default) or mac (Mac App Store)",
+            ),
         }),
       },
-      ({ idea, storefronts }) =>
-        run(() => createBrainstorm({ idea, countries: storefronts })),
+      ({ idea, storefronts, platform }) =>
+        run(() => createBrainstorm({ idea, countries: storefronts, platform })),
     );
 
     server.registerTool(
