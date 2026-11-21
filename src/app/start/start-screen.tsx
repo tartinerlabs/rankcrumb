@@ -61,9 +61,15 @@ export function StartScreen({
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 pt-8 pb-12 sm:px-6 sm:pt-16">
-      <Suspense fallback={<Skeleton className="h-10 w-64" />}>
-        <Heading progress={progress} />
-      </Suspense>
+      <div className="flex flex-col gap-2">
+        <Suspense fallback={<Skeleton className="h-10 w-64" />}>
+          <Heading progress={progress} mode={mode} />
+        </Suspense>
+        <Typography.Paragraph color="muted">
+          RankCrumb finds the App Store keywords that people search for, and
+          shows where an app ranks for them in each country.
+        </Typography.Paragraph>
+      </div>
       <div className="flex flex-col gap-3">
         <div>
           <Segment
@@ -75,6 +81,11 @@ export function StartScreen({
             <Segment.Item id="niche">Brainstorm a Niche</Segment.Item>
           </Segment>
         </div>
+        <Typography.Paragraph size="sm" color="muted">
+          {mode === "app"
+            ? "Track an app that is already on the App Store: yours, or a competitor's."
+            : "Test an app idea before you build it: see if people search for it and how strong the other apps are."}
+        </Typography.Paragraph>
         {mode === "app" ? <AppSearch /> : <NicheForm />}
       </div>
       {mode === "app" && (
@@ -86,11 +97,21 @@ export function StartScreen({
   );
 }
 
-function Heading({ progress }: { progress: Promise<StartProgress> }) {
+function Heading({
+  progress,
+  mode,
+}: {
+  progress: Promise<StartProgress>;
+  mode: Mode;
+}) {
   const { hasApps } = use(progress);
   return (
     <Typography.Heading level={1}>
-      {hasApps ? "Add an App" : "Add Your First App"}
+      {mode === "niche"
+        ? "Test an App Idea"
+        : hasApps
+          ? "Add an App"
+          : "Add Your First App"}
     </Typography.Heading>
   );
 }
@@ -356,23 +377,30 @@ function CountriesDialog({
   const [countries, setCountries] = useState<string[]>([...PRESET_COUNTRIES]);
   const [importListing, setImportListing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The step in progress, so a long import says what it is doing
+  const [step, setStep] = useState<string | null>(null);
 
   const save = () => {
     if (appId === null) return;
     setError(null);
     startTransition(async () => {
+      setStep("Saving countries…");
       const saved = await setCountriesAction(appId, countries);
       if (saved.error !== undefined) {
         setError(saved.error);
         return;
       }
       if (importListing) {
+        setStep("Reading your App Store listing…");
         const found = await importCandidatesAction(appId);
         if (found.error !== undefined) {
           setError(found.error);
           return;
         }
         if (found.data.length > 0) {
+          setStep(
+            `Adding ${Math.min(found.data.length, MAX_IMPORT)} keywords and writing them for each country…`,
+          );
           const added = await addTermsAction(appId, {
             labels: found.data.slice(0, MAX_IMPORT),
             localize: true,
@@ -436,6 +464,11 @@ function CountriesDialog({
                     Import keywords from my current listing
                   </Checkbox.Content>
                 </Checkbox>
+                {isPending && step && (
+                  <p className="text-sm text-muted" aria-live="polite">
+                    {step}
+                  </p>
+                )}
                 {error && (
                   <Alert status="danger">
                     <Alert.Indicator />
@@ -522,7 +555,7 @@ function NicheForm() {
         isPending={isPending}
         onPress={brainstorm}
       >
-        Brainstorm Keywords
+        {isPending ? "Suggesting Keywords…" : "Brainstorm Keywords"}
       </Button>
     </div>
   );

@@ -1,9 +1,24 @@
 "use client";
 
-import { Avatar, Button, Card, Chip, Table, toast } from "@heroui/react";
+import {
+  Avatar,
+  Button,
+  buttonVariants,
+  Card,
+  Chip,
+  Label,
+  ListBox,
+  ProgressBar,
+  Select,
+  Table,
+  Typography,
+  toast,
+} from "@heroui/react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { recheckBrainstormAction } from "@/actions/brainstorms";
+import { addTermsAction } from "@/actions/terms";
 import { getCountry } from "@/components/countries";
 import { MetricLabel } from "@/components/metric";
 import type { IdeaVerdict, Verdict } from "@/lib/scoring";
@@ -32,50 +47,163 @@ export function BrainstormTable({ rows }: { rows: BrainstormRow[] }) {
     return () => clearInterval(timer);
   }, [hasQueued, router]);
 
+  const done = rows.filter((r) => !r.queued).length;
+
   return (
-    <Table>
-      <Table.ScrollContainer>
-        <Table.Content aria-label="Brainstorm keywords">
-          <Table.Header>
-            <Table.Column isRowHeader>Keyword</Table.Column>
-            <Table.Column>Country</Table.Column>
-            <Table.Column>
-              <MetricLabel kind="volume" />
-            </Table.Column>
-            <Table.Column>
-              <MetricLabel kind="difficulty" />
-            </Table.Column>
-          </Table.Header>
-          <Table.Body>
-            {rows.map((r) => {
-              const { flag, name } = getCountry(r.country);
-              return (
-                <Table.Row key={r.keywordId} id={r.keywordId}>
-                  <Table.Cell>{r.phrase}</Table.Cell>
-                  <Table.Cell>
-                    <span aria-hidden="true">{flag}</span> {name}
-                  </Table.Cell>
-                  <Table.Cell>
-                    <Score
-                      value={r.volume}
-                      queued={r.queued}
-                      checked={r.checked}
-                    />
-                  </Table.Cell>
-                  <Table.Cell>
-                    <Score
-                      value={r.difficulty}
-                      queued={r.queued}
-                      checked={r.checked}
-                    />
-                  </Table.Cell>
-                </Table.Row>
-              );
-            })}
-          </Table.Body>
-        </Table.Content>
-      </Table.ScrollContainer>
-    </Table>
+    <div className="flex flex-col gap-3">
+      {hasQueued && (
+        <ProgressBar
+          value={done}
+          maxValue={rows.length}
+          valueLabel={`${done} of ${rows.length}`}
+        >
+          <Label>Checking keywords</Label>
+          <ProgressBar.Output>
+            <span className="tabular-nums">
+              {done} of {rows.length}
+            </span>
+          </ProgressBar.Output>
+          <ProgressBar.Track>
+            <ProgressBar.Fill />
+          </ProgressBar.Track>
+        </ProgressBar>
+      )}
+      <Table>
+        <Table.ScrollContainer>
+          <Table.Content aria-label="Brainstorm keywords">
+            <Table.Header>
+              <Table.Column isRowHeader>Keyword</Table.Column>
+              <Table.Column>Country</Table.Column>
+              <Table.Column>
+                <MetricLabel kind="volume" />
+              </Table.Column>
+              <Table.Column>
+                <MetricLabel kind="difficulty" />
+              </Table.Column>
+            </Table.Header>
+            <Table.Body>
+              {rows.map((r) => {
+                const { flag, name } = getCountry(r.country);
+                return (
+                  <Table.Row key={r.keywordId} id={r.keywordId}>
+                    <Table.Cell>{r.phrase}</Table.Cell>
+                    <Table.Cell>
+                      <span aria-hidden="true">{flag}</span> {name}
+                    </Table.Cell>
+                    <Table.Cell>
+                      <Score
+                        value={r.volume}
+                        queued={r.queued}
+                        checked={r.checked}
+                      />
+                    </Table.Cell>
+                    <Table.Cell>
+                      <Score
+                        value={r.difficulty}
+                        queued={r.queued}
+                        checked={r.checked}
+                      />
+                    </Table.Cell>
+                  </Table.Row>
+                );
+              })}
+            </Table.Body>
+          </Table.Content>
+        </Table.ScrollContainer>
+      </Table>
+    </div>
+  );
+}
+
+const MAX_ADD = 100;
+
+/** What to do with the result: put the phrases on one of your apps, or test another idea. */
+export function BrainstormNext({
+  phrases,
+  apps,
+}: {
+  phrases: string[];
+  apps: { trackId: number; name: string }[];
+}) {
+  const router = useRouter();
+  const [appId, setAppId] = useState<number | null>(apps[0]?.trackId ?? null);
+  const [isPending, startTransition] = useTransition();
+  const labels = phrases.slice(0, MAX_ADD);
+
+  const add = () => {
+    if (appId === null) return;
+    startTransition(async () => {
+      const res = await addTermsAction(appId, { labels, localize: true });
+      if (res.error !== undefined) {
+        toast.danger(res.error);
+        return;
+      }
+      router.push(`/apps/${appId}/keywords`);
+    });
+  };
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(labels.join("\n"));
+      toast.success(`Copied ${labels.length} keywords`);
+    } catch {
+      toast.danger("Could not copy. Select the keywords in the table instead.");
+    }
+  };
+
+  return (
+    <section className="flex flex-col gap-3" aria-labelledby="next-heading">
+      <Typography.Heading level={2} id="next-heading">
+        What Next
+      </Typography.Heading>
+      {apps.length > 0 ? (
+        <>
+          <Typography.Paragraph size="sm" color="muted">
+            Add these {labels.length} keywords to one of your apps. RankCrumb
+            writes them for each of its countries and starts to check ranks.
+          </Typography.Paragraph>
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="w-64 max-w-full">
+              <Select
+                value={appId}
+                onChange={(key) => key !== null && setAppId(Number(key))}
+              >
+                <Label>Your app</Label>
+                <Select.Trigger>
+                  <Select.Value />
+                  <Select.Indicator />
+                </Select.Trigger>
+                <Select.Popover>
+                  <ListBox items={apps.map((a) => ({ ...a, id: a.trackId }))}>
+                    {(a) => (
+                      <ListBox.Item id={a.trackId} textValue={a.name}>
+                        {a.name}
+                      </ListBox.Item>
+                    )}
+                  </ListBox>
+                </Select.Popover>
+              </Select>
+            </div>
+            <Button isPending={isPending} onPress={add}>
+              {isPending ? "Adding Keywords…" : "Add Keywords to App"}
+            </Button>
+          </div>
+        </>
+      ) : (
+        <Typography.Paragraph size="sm" color="muted">
+          When your app is on the App Store, add it from New, then add these
+          keywords on its Keywords tab.
+        </Typography.Paragraph>
+      )}
+      <div className="flex flex-wrap gap-3">
+        <Button variant="outline" onPress={copy}>
+          Copy Keywords
+        </Button>
+        <Link href="/" className={buttonVariants({ variant: "ghost" })}>
+          Test Another Idea
+        </Link>
+      </div>
+    </section>
   );
 }
 
@@ -100,14 +228,27 @@ function Score({
 
 const VERDICTS: Record<
   Verdict,
-  { label: string; color: "success" | "accent" | "default" | "warning" }
+  {
+    label: string;
+    color: "success" | "default" | "warning" | "danger";
+    variant: "soft" | "tertiary";
+  }
 > = {
-  "worth-building": { label: "Worth Building", color: "success" },
-  "worth-a-look": { label: "Worth a Look", color: "accent" },
-  "tough-market": { label: "Tough Market", color: "warning" },
-  "little-demand": { label: "Little Demand", color: "default" },
-  checking: { label: "Checking…", color: "default" },
-  unknown: { label: "Unknown", color: "default" },
+  // Accent stays for actions; pending states are quieter than results
+  "worth-building": {
+    label: "Worth Building",
+    color: "success",
+    variant: "soft",
+  },
+  "worth-a-look": { label: "Worth a Look", color: "default", variant: "soft" },
+  "tough-market": { label: "Tough Market", color: "warning", variant: "soft" },
+  "little-demand": {
+    label: "Little Demand",
+    color: "danger",
+    variant: "soft",
+  },
+  checking: { label: "Checking…", color: "default", variant: "tertiary" },
+  unknown: { label: "Unknown", color: "default", variant: "tertiary" },
 };
 
 const compact = new Intl.NumberFormat("en", { notation: "compact" });
@@ -142,9 +283,9 @@ export function IdeaVerdicts({
   return (
     <section className="flex flex-col gap-4" aria-labelledby="verdict-heading">
       <div className="flex items-center justify-between gap-4">
-        <h2 id="verdict-heading" className="font-semibold text-lg">
+        <Typography.Heading level={2} id="verdict-heading">
           Worth Building?
-        </h2>
+        </Typography.Heading>
         <Button variant="outline" isPending={isPending} onPress={recheck}>
           Check Again
         </Button>
@@ -166,7 +307,7 @@ function VerdictCard({
   competitors,
 }: { country: string } & IdeaVerdict) {
   const { flag, name } = getCountry(country);
-  const { label, color } = VERDICTS[verdict];
+  const { label, color, variant } = VERDICTS[verdict];
   return (
     <Card>
       <Card.Header>
@@ -174,7 +315,7 @@ function VerdictCard({
           <Card.Title>
             <span aria-hidden="true">{flag}</span> {name}
           </Card.Title>
-          <Chip color={color} variant="soft">
+          <Chip color={color} variant={variant}>
             {label}
           </Chip>
         </div>
@@ -187,7 +328,7 @@ function VerdictCard({
         </ul>
         {searched.length > 0 && (
           <div className="flex flex-col gap-2">
-            <h3 className="font-medium text-sm">Most Searched</h3>
+            <Typography.Heading level={3}>Most Searched</Typography.Heading>
             <div className="flex flex-wrap gap-2">
               {searched.slice(0, 5).map((s) => (
                 <Chip key={s.phrase} size="sm" variant="soft">
@@ -200,7 +341,9 @@ function VerdictCard({
         )}
         {competitors.length > 0 && (
           <div className="flex flex-col gap-2">
-            <h3 className="font-medium text-sm">Who You Would Compete With</h3>
+            <Typography.Heading level={3}>
+              Who You Would Compete With
+            </Typography.Heading>
             <ul className="flex flex-col gap-3">
               {competitors.map(({ app, phrases }) => (
                 <li key={app.id} className="flex items-center gap-3">
@@ -225,7 +368,7 @@ function VerdictCard({
                     </p>
                   </div>
                   <span className="shrink-0 text-muted text-sm tabular-nums">
-                    Top 10 for {phrases}/{searched.length}
+                    Top 10 for {phrases} of {searched.length}
                   </span>
                 </li>
               ))}
