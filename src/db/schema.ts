@@ -64,7 +64,10 @@ export const keywordChecks = snakeCase.table(
       .notNull()
       .references(() => keywords.id, { onDelete: "cascade" }),
     checkedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+    // Title-targeting score of the top 50 (kept, no longer shown as Demand)
     volume: smallint().notNull(),
+    // Demand from App Store autocomplete; null before it existed, for storefronts without an id, or when Apple failed
+    popularity: smallint(),
     difficulty: smallint().notNull(),
     // Search results in rank order (index 0 = rank 1)
     topApps: jsonb().$type<TopApp[]>().notNull(),
@@ -74,6 +77,10 @@ export const keywordChecks = snakeCase.table(
   (t) => [
     index().on(t.keywordId, t.checkedAt.desc()),
     check("keyword_checks_volume_ck", sql`${t.volume} between 0 and 100`),
+    check(
+      "keyword_checks_popularity_ck",
+      sql`${t.popularity} between 0 and 100`,
+    ),
     check(
       "keyword_checks_difficulty_ck",
       sql`${t.difficulty} between 0 and 100`,

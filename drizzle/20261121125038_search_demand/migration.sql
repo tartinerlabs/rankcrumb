@@ -1,0 +1,2 @@
+ALTER TABLE "keyword_checks" ADD COLUMN "popularity" smallint;--> statement-breakpoint
+ALTER TABLE "keyword_checks" ADD CONSTRAINT "keyword_checks_popularity_ck" CHECK ("popularity" between 0 and 100);

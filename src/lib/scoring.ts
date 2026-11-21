@@ -122,6 +122,22 @@ export function volumeScore(
   return Math.round((100 * num) / den);
 }
 
+/** Where App Store autocomplete first suggests a phrase: characters typed and its 1-based place among the suggestions. */
+export type HintHit = { typed: number; position: number };
+
+/**
+ * Demand 0-100 from App Store autocomplete: the fewer characters typed before
+ * Apple suggests the phrase, and the higher it sits, the more it is searched.
+ * 80% characters (3 or fewer = full, 15 or more = none), 20% place (1st = full,
+ * 10th = a tenth). Never suggested = 0. Relative, not a search count.
+ */
+export function popularityScore(hit: HintHit | null): number {
+  if (!hit) return 0;
+  const typed = Math.min(1, Math.max(0, (15 - hit.typed) / 12));
+  const place = Math.min(1, Math.max(0, (11 - hit.position) / 10));
+  return Math.round(100 * (0.8 * typed + 0.2 * place));
+}
+
 /** log10 rating count mapped to 0..1: <=10 ratings -> 0, >=1,000,000 -> 1. */
 const ratingStrength = (count: number) =>
   Math.min(1, Math.max(0, (Math.log10(1 + count) - 1) / 5));
@@ -184,16 +200,18 @@ export type NextStep = "keep" | "push" | "try" | "long-shot" | "skip";
 
 /**
  * Suggested next step for a tracked phrase, first rule that matches:
- * rank 10 or better keep; volume under 10 skip; rank 11-50 with volume 30+
+ * rank 10 or better keep; demand (volume) unknown null; volume under 10 skip; rank 11-50 with volume 30+
  * push; unranked with volume 30+ and difficulty under 70 try; volume 30+ and
  * difficulty 70+ long-shot. Otherwise null (no rule applies).
  */
 export function nextStep(
   rank: number | null,
-  volume: number,
+  volume: number | null,
   difficulty: number,
 ): NextStep | null {
   if (rank !== null && rank <= 10) return "keep";
+  // Demand not measured: no basis for the other rules
+  if (volume === null) return null;
   if (volume < 10) return "skip";
   if (rank !== null && rank <= 50 && volume >= 30) return "push";
   if (rank === null && volume >= 30 && difficulty < 70) return "try";

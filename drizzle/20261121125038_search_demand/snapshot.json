@@ -1,0 +1,76 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "f1658503-cf9d-429f-a896-c62c047c7107",
+  "prevIds": [
+    "5f8bf0c9-fc8e-473c-bdd0-fcf125e26ea6"
+  ],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "keyword_checks",
+        "popularity"
+      ],
+      "writes": [
+        "s|col|public.keyword_checks.popularity",
+        "n|col|public.keyword_checks.popularity",
+        "e|col|public.keyword_checks.popularity"
+      ],
+      "reads": [
+        "n|tbl|public.keyword_checks",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "add_check",
+      "statementTarget": [
+        "table",
+        "public",
+        "keyword_checks"
+      ],
+      "writes": [
+        "s|ck|public.keyword_checks.keyword_checks_popularity_ck",
+        "n|ck|public.keyword_checks.keyword_checks_popularity_ck",
+        "e|ck|public.keyword_checks.keyword_checks_popularity_ck",
+        "n|con|public.keyword_checks.keyword_checks_popularity_ck"
+      ],
+      "reads": [
+        "n|tbl|public.keyword_checks",
+        "n|sch|public",
+        "n|col|public.keyword_checks.popularity"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "keyword_checks",
+        "name": "popularity",
+        "type": "smallint",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "keyword_checks",
+        "name": "keyword_checks_popularity_ck",
+        "value": "\"popularity\" between 0 and 100",
+        "entityType": "checks"
+      }
+    }
+  ]
+}

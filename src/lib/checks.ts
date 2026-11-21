@@ -10,11 +10,21 @@ import {
   type TopApp,
   termPhrases,
 } from "@/db/schema";
-import { search } from "@/lib/itunes";
+import { search, searchHints } from "@/lib/itunes";
 import { enqueue } from "@/lib/queue";
-import { difficultyScore, rankOf, volumeScore } from "@/lib/scoring";
+import {
+  difficultyScore,
+  normalize,
+  popularityScore,
+  rankOf,
+  volumeScore,
+} from "@/lib/scoring";
 
 const MAX_PHRASE_LENGTH = 100;
+// Autocomplete gets one overall limit, well inside the worker's 60s lease
+const POPULARITY_BUDGET_MS = 15_000;
+// Room left after autocomplete before the caller's deadline, as the worker's stop margin
+const POPULARITY_DEADLINE_MARGIN_MS = 15_000;
 const HOUR_MS = 3_600_000;
 
 /** A failure the user should see as is (bad input, missing app). */
@@ -29,14 +39,78 @@ export class UserError extends Error {
 export type Pair = { country: string; phrase: string };
 export type AppRow = typeof apps.$inferSelect;
 
-/** Search Apple once, score the results, then save the keyword and a new check. */
+/**
+ * Demand from App Store autocomplete: the fewest characters of the phrase typed
+ * before Apple suggests it, by binary search after one full-phrase request
+ * (about 5 requests). Null when the storefront has no id, Apple fails, or the
+ * requests outlast one overall limit (15s, less near the caller's deadline).
+ */
+async function popularity(
+  phrase: string,
+  country: string,
+  deadline?: number,
+): Promise<number | null> {
+  const budget = Math.min(
+    POPULARITY_BUDGET_MS,
+    deadline === undefined
+      ? POPULARITY_BUDGET_MS
+      : deadline - Date.now() - POPULARITY_DEADLINE_MARGIN_MS,
+  );
+  if (budget <= 0) return null;
+  const signal = AbortSignal.timeout(budget);
+  // Spaces ignored: Apple suggests "kalorien zähler" for "kalorienzähler"
+  const compact = (s: string) => normalize(s).replaceAll(" ", "");
+  const target = compact(phrase);
+  const chars = Array.from(phrase);
+  // 1-based place of the phrase among the suggestions, 0 when absent, null when unknown storefront
+  const placeAt = async (typed: number) => {
+    const hints = await searchHints(
+      chars.slice(0, typed).join(""),
+      country,
+      signal,
+    );
+    if (hints === null) return null;
+    const i = hints.findIndex((h) => compact(h) === target);
+    return i + 1;
+  };
+  try {
+    const full = await placeAt(chars.length);
+    if (full === null) return null;
+    if (full === 0) return popularityScore(null);
+    // Smallest prefix that still suggests the phrase; suggestions keep it once it shows
+    let lo = 1;
+    let hi = chars.length;
+    let position = full;
+    while (lo < hi) {
+      const mid = Math.floor((lo + hi) / 2);
+      const at = await placeAt(mid);
+      if (at) {
+        hi = mid;
+        position = at;
+      } else {
+        lo = mid + 1;
+      }
+    }
+    return popularityScore({ typed: hi, position });
+  } catch (e) {
+    console.warn(`popularity ${country} "${phrase}"`, e);
+    return null;
+  }
+}
+
+/** Search Apple once and read its autocomplete alongside, score both, then save the keyword and a new check. */
 export async function recordCheck(
   phrase: string,
   country: string,
   appId: number | null,
   opts?: { deadline?: number },
 ) {
-  const topApps = await search(phrase, country, opts);
+  // Autocomplete is another Apple host and never throws, so it runs during the gate wait
+  const [topApps, demand] = await Promise.all([
+    search(phrase, country, opts),
+    popularity(phrase, country, opts?.deadline),
+  ]);
+  // Old title-targeting score, still stored in the volume column; Demand reads popularity
   const volume = volumeScore(phrase, topApps);
   const difficulty = difficultyScore(phrase, topApps);
   const rank = appId === null ? null : rankOf(topApps, appId);
@@ -53,13 +127,21 @@ export async function recordCheck(
 
   const [inserted] = await db
     .insert(keywordChecks)
-    .values({ keywordId, volume, difficulty, topApps, appId, rank })
+    .values({
+      keywordId,
+      volume,
+      popularity: demand,
+      difficulty,
+      topApps,
+      appId,
+      rank,
+    })
     .returning({ id: keywordChecks.id, checkedAt: keywordChecks.checkedAt });
 
   return {
     checkId: inserted.id,
     keywordId,
-    volume,
+    popularity: demand,
     difficulty,
     topApps,
     rank,
@@ -134,7 +216,8 @@ export type AppRef = Pick<TopApp, "id" | "name" | "icon">;
 
 export type Latest = {
   checkedAt: Date;
-  volume: number;
+  /** Demand: the popularity column (App Store autocomplete); null when not measured */
+  volume: number | null;
   difficulty: number;
   /** Rank of the requested app; null when it is not in the top 200 or no app was asked */
   rank: number | null;
@@ -175,14 +258,14 @@ export async function latestChecks(
     keyword_id: number;
     // Raw timestamptz text from db.execute
     checked_at: string;
-    volume: number;
+    volume: number | null;
     difficulty: number;
     rank: number | null;
     has_previous: boolean;
     previous_rank: number | null;
     top: AppRef[];
   }>(sql`
-    select k.id as keyword_id, c.checked_at, c.volume, c.difficulty,
+    select k.id as keyword_id, c.checked_at, c.popularity as volume, c.difficulty,
       ${rankIn("c")} as rank,
       p.top_apps is not null as has_previous,
       ${rankIn("p")} as previous_rank,
@@ -190,7 +273,7 @@ export async function latestChecks(
         jsonb_build_object('last', ${topN - 1}::int)) as top
     from keywords k
     join lateral (
-      select checked_at, volume, difficulty, top_apps from keyword_checks
+      select checked_at, popularity, difficulty, top_apps from keyword_checks
       where keyword_id = k.id order by checked_at desc limit 1
     ) c on true
     left join lateral (
