@@ -8,7 +8,7 @@ type Kind = "volume" | "difficulty";
 // ASD-STE100 wording; the code still says volume/difficulty
 export const METRIC_HELP: Record<Kind, string> = {
   volume:
-    "This number (0 to 100) shows how many top apps use this keyword in their name. Apple does not give search data. A high number usually shows that people search for this keyword. A high number is good.",
+    "This number (0 to 100) shows how much people search for this keyword. It comes from App Store search suggestions: if Apple suggests the keyword after few letters, many people search for it. It compares keywords. It is not a number of searches. A high number is good.",
   difficulty:
     "This number (0 to 100) shows how difficult it is to get a higher rank than the top 10 apps. The calculation uses mostly the number of ratings that these apps have. A low number is good.",
 };

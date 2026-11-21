@@ -176,7 +176,9 @@ export async function loadBoard(appId: number): Promise<Board> {
       cells,
       top10: checked.filter(isTop10).length,
       checked: checked.length,
-      avgVolume: average(checked.map((l) => l.volume)),
+      avgVolume: average(
+        checked.flatMap((l) => (l.volume === null ? [] : [l.volume])),
+      ),
       avgDifficulty: average(checked.map((l) => l.difficulty)),
       phrases: new Set(filled.map(([, c]) => c.phrase)).size,
       countries: filled.length,
@@ -384,7 +386,8 @@ export async function loadHistory(
     points: {
       checkedAt: string;
       rank: number | null;
-      volume: number;
+      /** Demand (popularity); null when not measured */
+      volume: number | null;
       difficulty: number;
     }[];
   }[];
@@ -400,11 +403,11 @@ export async function loadHistory(
     difficulty: number | null;
     rank: number | null;
   }>(sql`
-    select tp.country, k.phrase, c.checked_at, c.volume, c.difficulty, c.rank
+    select tp.country, k.phrase, c.checked_at, c.popularity as volume, c.difficulty, c.rank
     from term_phrases tp
     join keywords k on k.id = tp.keyword_id
     left join lateral (
-      select checked_at, volume, difficulty,
+      select checked_at, popularity, difficulty,
         (select r.i from jsonb_array_elements(top_apps) with ordinality r(app, i)
           where (r.app->>'id')::bigint = ${appId}::bigint limit 1)::int as rank
       from keyword_checks
@@ -429,7 +432,7 @@ export async function loadHistory(
       s.points.push({
         checkedAt: new Date(r.checked_at).toISOString(),
         rank: r.rank,
-        volume: r.volume ?? 0,
+        volume: r.volume,
         difficulty: r.difficulty ?? 0,
       });
     }

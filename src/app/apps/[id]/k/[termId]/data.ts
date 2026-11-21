@@ -11,7 +11,8 @@ const TOP_APPS = 5;
 export type DetailCheck = {
   checkedAt: string;
   rank: number | null;
-  volume: number;
+  /** Demand; null when not measured */
+  volume: number | null;
   difficulty: number;
   top: TopApp[];
 };
