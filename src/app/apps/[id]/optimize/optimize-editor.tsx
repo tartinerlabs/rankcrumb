@@ -370,7 +370,7 @@ export function OptimizeEditor({
                 <div className="flex flex-col gap-2">
                   <Disclosure>
                     <Disclosure.Heading>
-                      <Disclosure.Trigger>
+                      <Disclosure.Trigger className="flex items-center gap-1">
                         Why This Works
                         <Disclosure.Indicator />
                       </Disclosure.Trigger>
@@ -385,7 +385,7 @@ export function OptimizeEditor({
                   </Disclosure>
                   <Disclosure>
                     <Disclosure.Heading>
-                      <Disclosure.Trigger>
+                      <Disclosure.Trigger className="flex items-center gap-1">
                         Phrases Covered ({optionScore.covered.length})
                         <Disclosure.Indicator />
                       </Disclosure.Trigger>
