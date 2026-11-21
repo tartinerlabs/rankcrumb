@@ -17,6 +17,13 @@ type Progress = {
 
 const POLL_MS = 3000;
 
+const CHECKS_QUEUED = "rankcrumb:checks-queued";
+
+/** Call after any action that queues checks, so the header shows their progress. */
+export function announceChecks() {
+  window.dispatchEvent(new Event(CHECKS_QUEUED));
+}
+
 type Props = { trackId: number; checkedText: string | null };
 
 /** Check now, then "Checking X of Y" with a progress bar and Pause while the queue works. */
@@ -26,7 +33,14 @@ export function CheckControls({ trackId, checkedText }: Props) {
   const [poll, setPoll] = useState(0);
   const isActive = progress !== null && progress.pending > 0;
 
-  // Read progress on open and after each Check now; keep polling while checks run
+  // Adding keywords or countries also queues checks: read progress again then
+  useEffect(() => {
+    const bump = () => setPoll((n) => n + 1);
+    window.addEventListener(CHECKS_QUEUED, bump);
+    return () => window.removeEventListener(CHECKS_QUEUED, bump);
+  }, []);
+
+  // Read progress on open, after each Check now and announceChecks; keep polling while checks run
   useEffect(() => {
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;

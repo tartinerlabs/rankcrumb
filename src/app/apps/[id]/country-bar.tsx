@@ -16,6 +16,7 @@ import { useState, useTransition } from "react";
 import { Autocomplete, useFilter } from "react-aria-components/Autocomplete";
 import { setCountriesAction } from "@/actions/terms";
 import { COUNTRIES, getCountry } from "@/components/countries";
+import { announceChecks } from "./check-controls";
 
 type Props = { trackId: number; countries: string[] };
 
@@ -29,6 +30,7 @@ export function CountryBar({ trackId, countries }: Props) {
     startTransition(async () => {
       const res = await setCountriesAction(trackId, next);
       if (res.error !== undefined) toast.danger(res.error);
+      else announceChecks();
     });
   };
 

@@ -42,6 +42,7 @@ import { Metric, MetricLabel } from "@/components/metric";
 import { RankChip } from "@/components/rank-chip";
 import { normalize } from "@/lib/scoring";
 import type { BoardView, CellView, TermView } from "../board/data";
+import { announceChecks } from "../check-controls";
 
 const REFRESH_MS = 5000;
 
@@ -180,6 +181,7 @@ export function KeywordsManager({ appId, isMine, board }: Props) {
         return;
       }
       const { added, existing } = res.data;
+      announceChecks();
       setText("");
       toast.success(
         added > 0
@@ -288,7 +290,10 @@ export function KeywordsManager({ appId, isMine, board }: Props) {
     [appId, isMine, countries.length],
   );
 
-  const localizeLabel = `Localize to ${countries.length} ${countries.length === 1 ? "Country" : "Countries"}`;
+  const localizeLabel =
+    adding === "localize"
+      ? `Writing Phrases for ${countries.length} ${countries.length === 1 ? "Country" : "Countries"}…`
+      : `Localize to ${countries.length} ${countries.length === 1 ? "Country" : "Countries"}`;
 
   return (
     <div className="flex flex-col gap-6">
@@ -507,7 +512,10 @@ function TermActions({
           localize: true,
         });
         if (res.error !== undefined) toast.danger(res.error);
-        else toast.success(`Localized “${term.label}”`);
+        else {
+          announceChecks();
+          toast.success(`Localized “${term.label}”`);
+        }
         return;
       }
       if (key === "hide" || key === "unhide") {
@@ -597,7 +605,10 @@ function RelocalizeButton({
     startTransition(async () => {
       const res = await relocalizePhraseAction(term.id, country);
       if (res.error !== undefined) toast.danger(res.error);
-      else toast.success(`Re-localized “${term.label}” for ${name}`);
+      else {
+        announceChecks();
+        toast.success(`Re-localized “${term.label}” for ${name}`);
+      }
     });
   };
 
@@ -639,6 +650,7 @@ function PhraseEditor({
         toast.danger(res.error);
         return;
       }
+      announceChecks();
       setIsOpen(false);
     });
   };

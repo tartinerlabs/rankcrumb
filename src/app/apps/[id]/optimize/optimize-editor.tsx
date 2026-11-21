@@ -16,7 +16,7 @@ import {
   toast,
 } from "@heroui/react";
 import { TrendChip } from "@heroui-pro/react";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import type { Key } from "react-aria-components";
 import { proposeListingAction } from "@/actions/listing";
 import { countryFlag } from "@/components/countries";
@@ -58,6 +58,39 @@ type Props = {
   missingEnv: string[] | null;
 };
 
+type SavedDraft = {
+  /** The listing the draft started from; a changed listing drops the draft */
+  base: ListingText;
+  options: Option[];
+  selected: Key;
+  chosen: string | null;
+  rows: Record<string, Row>;
+  promo: string;
+  description: string;
+};
+
+const draftKey = (appId: number) => `optimize-draft:${appId}`;
+
+// Session storage, so switching tabs keeps the work; it can be blocked or empty
+function readDraft(appId: number, base: ListingText): SavedDraft | null {
+  try {
+    const raw = sessionStorage.getItem(draftKey(appId));
+    if (!raw) return null;
+    const draft = JSON.parse(raw) as SavedDraft;
+    return JSON.stringify(draft.base) === JSON.stringify(base) ? draft : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeDraft(appId: number, draft: SavedDraft) {
+  try {
+    sessionStorage.setItem(draftKey(appId), JSON.stringify(draft));
+  } catch {
+    // Storage full or blocked: the draft lives only on this page
+  }
+}
+
 const flags = (countries: string[]) => countries.map(countryFlag).join(" ");
 
 const isValid = (l: ListingText) =>
@@ -91,6 +124,47 @@ export function OptimizeEditor({
   const [description, setDescription] = useState("");
   // "options" for step 1, "all" or a locale for step 2
   const [pending, setPending] = useState<Set<string>>(new Set());
+
+  // Restore after mount (storage is client-only), then save every change
+  const restored = useRef(false);
+  useEffect(() => {
+    const draft = readDraft(appId, main.current);
+    if (draft) {
+      setOptions(draft.options);
+      setSelected(draft.selected);
+      setChosen(draft.chosen);
+      setRows((current) => ({
+        ...current,
+        ...Object.fromEntries(
+          Object.entries(draft.rows).filter(([locale]) => locale in current),
+        ),
+      }));
+      setPromo(draft.promo);
+      setDescription(draft.description);
+    }
+    restored.current = true;
+  }, [appId, main.current]);
+  useEffect(() => {
+    if (!restored.current) return;
+    writeDraft(appId, {
+      base: main.current,
+      options,
+      selected,
+      chosen,
+      rows,
+      promo,
+      description,
+    });
+  }, [
+    appId,
+    main.current,
+    options,
+    selected,
+    chosen,
+    rows,
+    promo,
+    description,
+  ]);
 
   const now = score(main.current, main.phrases);
   const option = options.find((o) => o.id === selected) ?? initial;
@@ -654,11 +728,6 @@ function LongField({
           </span>
         </Description>
       </TextField>
-      <div>
-        <Button variant="outline" isDisabled>
-          Improve with AI
-        </Button>
-      </div>
     </div>
   );
 }
