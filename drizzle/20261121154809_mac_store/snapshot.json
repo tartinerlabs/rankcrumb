@@ -1,0 +1,396 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "7dc390a4-f9a5-4341-adaf-c94f11a8cc37",
+  "prevIds": [
+    "f1658503-cf9d-429f-a896-c62c047c7107"
+  ],
+  "footprints": [
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "review_pace"
+      ],
+      "writes": [
+        "s|tbl|public.review_pace",
+        "n|tbl|public.review_pace",
+        "e|tbl|public.review_pace",
+        "n|rel|public.review_pace",
+        "n|type|public.review_pace",
+        "n|rel|public.review_pace_pkey"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "drop_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "keywords",
+        "keywords_country_phrase_index"
+      ],
+      "writes": [
+        "s|idx|public.keywords_country_phrase_index",
+        "n|idx|public.keywords_country_phrase_index",
+        "e|idx|public.keywords_country_phrase_index",
+        "n|rel|public.keywords_country_phrase_index"
+      ],
+      "reads": [
+        "n|tbl|public.keywords",
+        "n|sch|public",
+        "e|col|public.keywords.country",
+        "e|col|public.keywords.phrase"
+      ],
+      "sharedWrites": [
+        "e|uniqueness|public.keywords.country.phrase"
+      ]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "apps",
+        "platform"
+      ],
+      "writes": [
+        "s|col|public.apps.platform",
+        "n|col|public.apps.platform",
+        "e|col|public.apps.platform"
+      ],
+      "reads": [
+        "n|tbl|public.apps",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "brainstorms",
+        "platform"
+      ],
+      "writes": [
+        "s|col|public.brainstorms.platform",
+        "n|col|public.brainstorms.platform",
+        "e|col|public.brainstorms.platform"
+      ],
+      "reads": [
+        "n|tbl|public.brainstorms",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "keywords",
+        "platform"
+      ],
+      "writes": [
+        "s|col|public.keywords.platform",
+        "n|col|public.keywords.platform",
+        "e|col|public.keywords.platform"
+      ],
+      "reads": [
+        "n|tbl|public.keywords",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "keywords",
+        "keywords_platform_country_phrase_index"
+      ],
+      "writes": [
+        "s|idx|public.keywords_platform_country_phrase_index",
+        "n|idx|public.keywords_platform_country_phrase_index",
+        "e|idx|public.keywords_platform_country_phrase_index",
+        "n|rel|public.keywords_platform_country_phrase_index"
+      ],
+      "reads": [
+        "n|tbl|public.keywords",
+        "n|sch|public",
+        "n|col|public.keywords.platform",
+        "n|col|public.keywords.country",
+        "n|col|public.keywords.phrase"
+      ]
+    },
+    {
+      "statementType": "add_check",
+      "statementTarget": [
+        "table",
+        "public",
+        "apps"
+      ],
+      "writes": [
+        "s|ck|public.apps.apps_platform_ck",
+        "n|ck|public.apps.apps_platform_ck",
+        "e|ck|public.apps.apps_platform_ck",
+        "n|con|public.apps.apps_platform_ck"
+      ],
+      "reads": [
+        "n|tbl|public.apps",
+        "n|sch|public",
+        "n|col|public.apps.platform"
+      ]
+    },
+    {
+      "statementType": "add_check",
+      "statementTarget": [
+        "table",
+        "public",
+        "brainstorms"
+      ],
+      "writes": [
+        "s|ck|public.brainstorms.brainstorms_platform_ck",
+        "n|ck|public.brainstorms.brainstorms_platform_ck",
+        "e|ck|public.brainstorms.brainstorms_platform_ck",
+        "n|con|public.brainstorms.brainstorms_platform_ck"
+      ],
+      "reads": [
+        "n|tbl|public.brainstorms",
+        "n|sch|public",
+        "n|col|public.brainstorms.platform"
+      ]
+    },
+    {
+      "statementType": "add_check",
+      "statementTarget": [
+        "table",
+        "public",
+        "keywords"
+      ],
+      "writes": [
+        "s|ck|public.keywords.keywords_platform_ck",
+        "n|ck|public.keywords.keywords_platform_ck",
+        "e|ck|public.keywords.keywords_platform_ck",
+        "n|con|public.keywords.keywords_platform_ck"
+      ],
+      "reads": [
+        "n|tbl|public.keywords",
+        "n|sch|public",
+        "n|col|public.keywords.platform"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "review_pace",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "apps",
+        "name": "platform",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "'ios'",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "brainstorms",
+        "name": "platform",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "'ios'",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "keywords",
+        "name": "platform",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "'ios'",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "review_pace",
+        "name": "track_id",
+        "type": "bigint",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "review_pace",
+        "name": "country",
+        "type": "varchar(2)",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "review_pace",
+        "name": "per_day",
+        "type": "real",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "review_pace",
+        "name": "checked_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "keywords",
+        "name": "keywords_platform_country_phrase_index",
+        "nameExplicit": false,
+        "columns": [
+          {
+            "value": "platform",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "country",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "phrase",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": true,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "review_pace",
+        "name": "review_pace_pkey",
+        "columns": [
+          "track_id",
+          "country"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "apps",
+        "name": "apps_platform_ck",
+        "value": "\"platform\" in ('ios', 'mac')",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "brainstorms",
+        "name": "brainstorms_platform_ck",
+        "value": "\"platform\" in ('ios', 'mac')",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "keywords",
+        "name": "keywords_platform_ck",
+        "value": "\"platform\" in ('ios', 'mac')",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"keywords_country_phrase_index\"]"
+    }
+  ]
+}
