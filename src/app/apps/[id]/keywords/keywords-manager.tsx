@@ -446,7 +446,7 @@ function CountryRank({ cell }: { cell?: CellView }) {
     return cell.queued ? (
       <Spinner size="sm" color="current" aria-label="Checking" />
     ) : (
-      <RankChip rank={null} />
+      <span className="whitespace-nowrap text-xs text-muted">Not checked</span>
     );
   }
   return <RankChip rank={cell.rank} />;

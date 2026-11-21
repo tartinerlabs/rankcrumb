@@ -19,14 +19,8 @@ export function RankChip({ rank, size }: Props) {
   return (
     <Chip color={color} variant="soft" size={size}>
       <Chip.Label>
-        {ranked ? (
-          <span className="tabular-nums">{rank}</span>
-        ) : (
-          <>
-            <span aria-hidden="true">–</span>
-            <span className="sr-only">Not ranked</span>
-          </>
-        )}
+        {/* Spelled out so it is not confused with "not checked" */}
+        {ranked ? <span className="tabular-nums">{rank}</span> : "Not ranked"}
       </Chip.Label>
     </Chip>
   );

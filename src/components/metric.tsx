@@ -46,13 +46,15 @@ type Props = {
   kind: Kind;
   /** 0-100; null when not checked yet */
   value: number | null | undefined;
+  /** No good/bad tone, for dense grids where the rank chip carries the colour */
+  neutral?: boolean;
 };
 
 // Colour always sits on the number itself: high volume is good, high difficulty is bad
 const HIGH_VOLUME = 50;
 const HIGH_DIFFICULTY = 70;
 
-export function Metric({ kind, value }: Props) {
+export function Metric({ kind, value, neutral }: Props) {
   if (value == null) {
     return (
       <span className="tabular-nums text-muted">
@@ -61,8 +63,9 @@ export function Metric({ kind, value }: Props) {
       </span>
     );
   }
-  const tone =
-    kind === "volume"
+  const tone = neutral
+    ? ""
+    : kind === "volume"
       ? value >= HIGH_VOLUME
         ? "text-success"
         : "text-foreground"

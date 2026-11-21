@@ -84,7 +84,7 @@ async function KeywordDetailView({
           className={buttonVariants({ variant: "ghost" })}
         >
           <IconChevronLeft />
-          Board
+          Overview
         </Link>
         <Typography.Heading level={2}>{detail.label}</Typography.Heading>
         <Typography.Paragraph color="muted">

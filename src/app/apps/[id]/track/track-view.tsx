@@ -29,12 +29,12 @@ export type CountryTrack = {
   losingTo: (LosingTo & { ratings: number | null })[];
 };
 
-type Props = { appId: number; tracks: CountryTrack[] };
+type Props = { appId: number; isMine: boolean; tracks: CountryTrack[] };
 
 type View = "country" | "keyword";
 
 /** Country cards, then one country's keywords (or one keyword's countries), then who is ahead there. */
-export function TrackView({ appId, tracks }: Props) {
+export function TrackView({ appId, isMine, tracks }: Props) {
   const searchParams = useSearchParams();
 
   // State lives in the URL; replaceState keeps it in sync without a server round trip
@@ -55,7 +55,13 @@ export function TrackView({ appId, tracks }: Props) {
   const selected =
     tracks.find((t) => t.country === searchParams.get("country")) ?? tracks[0];
   if (!selected || tracks.every((t) => t.total === 0)) {
-    return <NoKeywords appId={appId} hasCountries={tracks.length > 0} />;
+    return (
+      <NoKeywords
+        appId={appId}
+        isMine={isMine}
+        hasCountries={tracks.length > 0}
+      />
+    );
   }
   const view: View =
     searchParams.get("view") === "keyword" ? "keyword" : "country";
@@ -91,7 +97,7 @@ export function TrackView({ appId, tracks }: Props) {
                       <span aria-hidden="true">{flag}</span> {name}
                     </span>
                     <span className="whitespace-nowrap text-sm text-muted tabular-nums">
-                      {t.top10}/{t.total} in the top 10
+                      {t.top10} of {t.total} in the top 10
                     </span>
                   </RadioButtonGroup.ItemContent>
                 </RadioButtonGroup.Item>
@@ -145,6 +151,7 @@ export function TrackView({ appId, tracks }: Props) {
           label={`Keywords in ${getCountry(selected.country).name}`}
           rows={selected.rows.map((r) => ({ ...r, country: selected.country }))}
           showCountry={false}
+          isMine={isMine}
         />
       ) : (
         <TrackTable
@@ -156,17 +163,20 @@ export function TrackView({ appId, tracks }: Props) {
               .map((r) => ({ ...r, country: t.country })),
           )}
           showCountry
+          isMine={isMine}
         />
       )}
 
       <section className="flex flex-col gap-4">
         <Typography.Heading level={2}>
-          Losing To in {getCountry(selected.country).name}
+          {isMine ? "Apps Ahead of You" : "Apps Ahead of It"} in{" "}
+          {getCountry(selected.country).name}
         </Typography.Heading>
         <LosingToCards
           appId={appId}
           country={selected.country}
           losingTo={selected.losingTo}
+          isMine={isMine}
         />
       </section>
     </div>
@@ -180,11 +190,14 @@ function TrackTable({
   label,
   rows,
   showCountry,
+  isMine,
 }: {
   appId: number;
   label: string;
   rows: Row[];
   showCountry: boolean;
+  /** Next Step is advice for your own listing */
+  isMine: boolean;
 }) {
   return (
     <Table>
@@ -203,7 +216,7 @@ function TrackTable({
               <MetricLabel kind="difficulty" />
             </Table.Column>
             <Table.Column>Top 5</Table.Column>
-            <Table.Column>Next Step</Table.Column>
+            {isMine ? <Table.Column>Next Step</Table.Column> : null}
           </Table.Header>
           <Table.Body
             renderEmptyState={() => (
@@ -247,16 +260,18 @@ function TrackTable({
                   <Table.Cell>
                     <TopApps apps={r.top5} />
                   </Table.Cell>
-                  <Table.Cell>
-                    {r.nextStep ? (
-                      <NextStepChip step={r.nextStep} />
-                    ) : (
-                      <span className="text-muted">
-                        <span aria-hidden="true">–</span>
-                        <span className="sr-only">No next step</span>
-                      </span>
-                    )}
-                  </Table.Cell>
+                  {isMine ? (
+                    <Table.Cell>
+                      {r.nextStep ? (
+                        <NextStepChip step={r.nextStep} />
+                      ) : (
+                        <span className="text-muted">
+                          <span aria-hidden="true">–</span>
+                          <span className="sr-only">No next step</span>
+                        </span>
+                      )}
+                    </Table.Cell>
+                  ) : null}
                 </Table.Row>
               );
             })}
@@ -326,11 +341,14 @@ function TopApps({ apps }: { apps: TrackRow["top5"] }) {
 
 function NoKeywords({
   appId,
+  isMine,
   hasCountries,
 }: {
   appId: number;
+  isMine: boolean;
   hasCountries: boolean;
 }) {
+  const where = isMine ? "where you rank" : "where this app ranks";
   return (
     <EmptyState>
       <EmptyState.Header>
@@ -339,12 +357,12 @@ function NoKeywords({
         </EmptyState.Title>
         <EmptyState.Description>
           {hasCountries
-            ? "Add keywords, and each country will show where you rank and who is ahead after the first check."
-            : "Add a country on the Board to see where you rank in it and who is ahead."}
+            ? `Add keywords, and each country will show ${where} and who is ahead after the first check.`
+            : `Add a country on the Overview tab to see ${where} in it and who is ahead.`}
         </EmptyState.Description>
       </EmptyState.Header>
       <EmptyState.Content>
-        {/* Track hides the country bar, so countries are added on the Board */}
+        {/* Rankings hides the country bar, so countries are added on Overview */}
         <Link
           href={`/apps/${appId}/${hasCountries ? "keywords" : "board"}`}
           className={buttonVariants()}
