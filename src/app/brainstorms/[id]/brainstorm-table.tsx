@@ -328,7 +328,7 @@ function VerdictCard({
         </ul>
         {searched.length > 0 && (
           <div className="flex flex-col gap-2">
-            <Typography.Heading level={3}>Most Searched</Typography.Heading>
+            <h3 className="font-medium text-sm">Most Searched</h3>
             <div className="flex flex-wrap gap-2">
               {searched.slice(0, 5).map((s) => (
                 <Chip key={s.phrase} size="sm" variant="soft">
@@ -341,9 +341,7 @@ function VerdictCard({
         )}
         {competitors.length > 0 && (
           <div className="flex flex-col gap-2">
-            <Typography.Heading level={3}>
-              Who You Would Compete With
-            </Typography.Heading>
+            <h3 className="font-medium text-sm">Who You Would Compete With</h3>
             <ul className="flex flex-col gap-3">
               {competitors.map(({ app, phrases }) => (
                 <li key={app.id} className="flex items-center gap-3">

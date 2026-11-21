@@ -16,7 +16,7 @@ import {
   toast,
 } from "@heroui/react";
 import { TrendChip } from "@heroui-pro/react";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import type { Key } from "react-aria-components";
 import { proposeListingAction } from "@/actions/listing";
 import { countryFlag } from "@/components/countries";
@@ -126,7 +126,8 @@ export function OptimizeEditor({
   const [pending, setPending] = useState<Set<string>>(new Set());
 
   // Restore after mount (storage is client-only), then save every change
-  const restored = useRef(false);
+  // State, not a ref: saving starts on the render after the restore, never before it
+  const [restored, setRestored] = useState(false);
   useEffect(() => {
     const draft = readDraft(appId, main.current);
     if (draft) {
@@ -142,10 +143,10 @@ export function OptimizeEditor({
       setPromo(draft.promo);
       setDescription(draft.description);
     }
-    restored.current = true;
+    setRestored(true);
   }, [appId, main.current]);
   useEffect(() => {
-    if (!restored.current) return;
+    if (!restored) return;
     writeDraft(appId, {
       base: main.current,
       options,
@@ -164,6 +165,7 @@ export function OptimizeEditor({
     rows,
     promo,
     description,
+    restored,
   ]);
 
   const now = score(main.current, main.phrases);

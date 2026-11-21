@@ -54,7 +54,7 @@ export function NextStepChip({ step, size }: Props) {
     <Tooltip>
       <Tooltip.Trigger aria-label={`${label}: ${help}`}>
         <Chip color={color} variant={variant} size={size}>
-          {label}
+          <span className="whitespace-nowrap">{label}</span>
         </Chip>
       </Tooltip.Trigger>
       <Tooltip.Content className="max-w-xs">{help}</Tooltip.Content>
