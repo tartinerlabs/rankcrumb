@@ -5,7 +5,11 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { getBrainstorm } from "@/lib/brainstorms";
 import { UserError } from "@/lib/checks";
-import { type BrainstormRow, BrainstormTable } from "./brainstorm-table";
+import {
+  type BrainstormRow,
+  BrainstormTable,
+  IdeaVerdicts,
+} from "./brainstorm-table";
 
 export const metadata: Metadata = { title: "Brainstorm" };
 
@@ -50,6 +54,10 @@ async function BrainstormContent({
   return (
     <div className="flex flex-col gap-4">
       <Typography.Paragraph>{brainstorm.idea}</Typography.Paragraph>
+      <IdeaVerdicts
+        brainstormId={brainstorm.id}
+        verdicts={brainstorm.verdicts}
+      />
       <BrainstormTable rows={rows} />
     </div>
   );

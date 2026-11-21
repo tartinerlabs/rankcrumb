@@ -23,6 +23,12 @@ export type TopApp = {
   icon: string;
   ratings: number;
   avg: number;
+  /** First release, ISO date (YYYY-MM-DD); absent on checks before it was stored */
+  released?: string;
+  /** Latest version release, ISO date; absent on older checks */
+  updated?: string;
+  /** Upfront price in the storefront currency (0 = free); absent on older checks */
+  price?: number;
 };
 
 export type Schedule = "off" | "daily" | "weekly";

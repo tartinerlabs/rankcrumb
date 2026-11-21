@@ -71,6 +71,15 @@ function toAppInfo(r: Record<string, unknown>, country: string): AppInfo {
   };
 }
 
+/** { [key]: "YYYY-MM-DD" } from an Apple timestamp, or nothing when it is missing or invalid. */
+function isoDay<K extends string>(key: K, value: unknown) {
+  if (typeof value !== "string") return {};
+  const day = value.slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(day)
+    ? ({ [key]: day } as Record<K, string>)
+    : {};
+}
+
 /** App Store search results for a phrase in one storefront, in rank order. */
 export async function search(
   phrase: string,
@@ -92,6 +101,9 @@ export async function search(
             icon: (r.artworkUrl100 as string) ?? "",
             ratings: (r.userRatingCount as number) ?? 0,
             avg: (r.averageUserRating as number) ?? 0,
+            ...isoDay("released", r.releaseDate),
+            ...isoDay("updated", r.currentVersionReleaseDate),
+            ...(typeof r.price === "number" && { price: r.price }),
           },
         ]
       : [],

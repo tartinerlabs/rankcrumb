@@ -218,3 +218,175 @@ export function nextStep(
   if (volume >= 30 && difficulty >= 70) return "long-shot";
   return null;
 }
+
+export type Verdict =
+  | "worth-building"
+  | "worth-a-look"
+  | "tough-market"
+  | "little-demand"
+  | "checking"
+  | "unknown";
+
+/** One phrase of an idea in one storefront: latest Demand and Competition and its top 10, null scores when not checked. */
+export type IdeaPhrase = {
+  phrase: string;
+  demand: number | null;
+  competition: number | null;
+  top: TopApp[];
+  queued: boolean;
+};
+
+export type IdeaVerdict = {
+  verdict: Verdict;
+  /** Plain sentences behind the verdict, in display order */
+  reasons: string[];
+  /** Phrases with Demand 50+, highest first */
+  searched: { phrase: string; demand: number }[];
+  /** Apps in the top 10 of searched phrases, most phrases first, at most 5 */
+  competitors: { app: TopApp; phrases: number }[];
+};
+
+const SEARCHED = 50;
+const MIN_SEARCHED = 3;
+const NEWCOMER_DAYS = 730;
+const NEWCOMER_RATINGS = 1000;
+const STALE_DAYS = 365;
+const WEAK_AVG = 4;
+const WEAK_MIN_RATINGS = 100;
+const DAY_MS = 86_400_000;
+
+const count = (n: number, one: string, many = `${one}s`) =>
+  `${n.toLocaleString("en")} ${n === 1 ? one : many}`;
+
+function median(values: number[]): number | null {
+  if (values.length === 0) return null;
+  const s = values.toSorted((a, b) => a - b);
+  const mid = Math.floor(s.length / 2);
+  return s.length % 2 ? s[mid] : Math.round((s[mid - 1] + s[mid]) / 2);
+}
+
+/**
+ * Whether an app idea is worth building in one storefront, by rules over its
+ * phrases (first that matches): checks still running = checking; no Demand
+ * measured = unknown; under 3 phrases with Demand 50+ = little demand. Then
+ * over the top 10 of the searched phrases: Competition 70+ and no opening =
+ * tough market; Competition under 60 and 2+ openings = worth building; else
+ * worth a look. An opening is a newcomer (released in the last 2 years, 1,000+
+ * ratings) or a weak leader (under 4.0 stars with 100+ ratings, or not updated
+ * in a year).
+ */
+export function ideaVerdict(
+  phrases: IdeaPhrase[],
+  now = Date.now(),
+): IdeaVerdict {
+  const empty = { searched: [], competitors: [] };
+  if (phrases.some((p) => p.queued)) {
+    return {
+      verdict: "checking",
+      reasons: [
+        `${count(phrases.filter((p) => p.queued).length, "phrase")} still being checked.`,
+      ],
+      ...empty,
+    };
+  }
+  const measured = phrases.filter((p) => p.demand !== null);
+  if (measured.length === 0) {
+    return {
+      verdict: "unknown",
+      reasons: ["Demand is not measured for this storefront."],
+      ...empty,
+    };
+  }
+
+  const searchedPhrases = measured
+    .filter((p) => (p.demand as number) >= SEARCHED)
+    .toSorted((a, b) => (b.demand as number) - (a.demand as number));
+  const searched = searchedPhrases.map((p) => ({
+    phrase: p.phrase,
+    demand: p.demand as number,
+  }));
+  const demandReason = `${searched.length} of ${count(measured.length, "phrase")} ${searched.length === 1 ? "has" : "have"} Demand ${SEARCHED} or more.`;
+  if (searched.length < MIN_SEARCHED) {
+    return {
+      verdict: "little-demand",
+      reasons: [demandReason, "Few people search for apps like this."],
+      searched,
+      competitors: [],
+    };
+  }
+
+  // Each app once, counted by how many searched phrases it leads
+  const leaders = new Map<number, { app: TopApp; phrases: number }>();
+  for (const p of searchedPhrases) {
+    for (const app of p.top.slice(0, 10)) {
+      const seen = leaders.get(app.id);
+      if (seen) seen.phrases++;
+      else leaders.set(app.id, { app, phrases: 1 });
+    }
+  }
+  const apps = [...leaders.values()].map((l) => l.app);
+  const daysAgo = (day: string) => (now - Date.parse(day)) / DAY_MS;
+  const newcomers = apps.filter(
+    (a) =>
+      a.released !== undefined &&
+      daysAgo(a.released) <= NEWCOMER_DAYS &&
+      a.ratings >= NEWCOMER_RATINGS,
+  );
+  const lowRated = apps.filter(
+    (a) => a.ratings >= WEAK_MIN_RATINGS && a.avg < WEAK_AVG,
+  );
+  const stale = apps.filter(
+    (a) => a.updated !== undefined && daysAgo(a.updated) > STALE_DAYS,
+  );
+  const openings = new Set(
+    [...newcomers, ...lowRated, ...stale].map((a) => a.id),
+  ).size;
+  const datesKnown = apps.some((a) => a.released !== undefined);
+
+  const scored = searchedPhrases.filter((p) => p.competition !== null);
+  const competition =
+    scored.length === 0
+      ? null
+      : Math.round(
+          scored.reduce((sum, p) => sum + (p.competition as number), 0) /
+            scored.length,
+        );
+  const typical = median(apps.map((a) => a.ratings));
+
+  const verdict: Verdict =
+    competition !== null && competition >= 70 && openings === 0
+      ? "tough-market"
+      : competition !== null && competition < 60 && openings >= 2
+        ? "worth-building"
+        : "worth-a-look";
+
+  const reasons = [
+    demandReason,
+    competition !== null &&
+      `Average Competition of these phrases is ${competition}.`,
+    typical !== null &&
+      `The leading apps have a typical ${count(typical, "rating")}.`,
+    datesKnown &&
+      (newcomers.length > 0
+        ? `${count(newcomers.length, "newcomer")} in the top 10: released in the last 2 years, with ${NEWCOMER_RATINGS.toLocaleString("en")} or more ratings.`
+        : "No app released in the last 2 years has 1,000 or more ratings."),
+    lowRated.length > 0 &&
+      `${count(lowRated.length, "leading app")} ${lowRated.length === 1 ? "is" : "are"} rated under ${WEAK_AVG.toFixed(1)} stars.`,
+    datesKnown &&
+      stale.length > 0 &&
+      `${count(stale.length, "leading app")} ${stale.length === 1 ? "is" : "are"} not updated in more than a year.`,
+    !datesKnown &&
+      "Release and update dates are not known yet. Check again to get them.",
+  ].filter((r): r is string => typeof r === "string");
+
+  return {
+    verdict,
+    reasons,
+    searched,
+    competitors: [...leaders.values()]
+      .toSorted(
+        (a, b) => b.phrases - a.phrases || b.app.ratings - a.app.ratings,
+      )
+      .slice(0, 5),
+  };
+}

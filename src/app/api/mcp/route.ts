@@ -447,7 +447,7 @@ const handler = createMcpHandler(
       {
         title: "Get brainstorm",
         description:
-          "A saved idea's phrases with the latest volume, difficulty and top apps of each.",
+          "A saved idea's phrases with the latest volume (Demand), difficulty (Competition) and top apps of each, plus a verdict per storefront (worth-building, worth-a-look, tough-market, little-demand, checking or unknown) with its reasons, most searched phrases and the apps to compete with.",
         inputSchema: z.object({ id: z.number().int().positive() }),
         annotations: readOnly,
       },
