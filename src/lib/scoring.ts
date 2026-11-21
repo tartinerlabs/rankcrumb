@@ -240,9 +240,9 @@ export type IdeaVerdict = {
   verdict: Verdict;
   /** Plain sentences behind the verdict, in display order */
   reasons: string[];
-  /** Phrases with Demand 50+, highest first */
+  /** Phrases with Demand 50+ and an app named for them in the top 10, highest first */
   searched: { phrase: string; demand: number }[];
-  /** Apps in the top 10 of searched phrases, most phrases first, at most 5 */
+  /** Apps named for a searched phrase in its top 10, most phrases first, at most 5 */
   competitors: { app: TopApp; phrases: number }[];
 };
 
@@ -253,6 +253,10 @@ const NEWCOMER_RATINGS = 1000;
 const STALE_DAYS = 365;
 const WEAK_AVG = 4;
 const WEAK_MIN_RATINGS = 100;
+// Every word of the phrase is in the app's name (titleMatch 0.85+)
+const RELEVANT = 0.85;
+// Typical ratings of the named apps below this = small market
+const SMALL_MARKET = 100;
 const DAY_MS = 86_400_000;
 
 const count = (n: number, one: string, many = `${one}s`) =>
@@ -268,10 +272,12 @@ function median(values: number[]): number | null {
 /**
  * Whether an app idea is worth building in one storefront, by rules over its
  * phrases (first that matches): checks still running = checking; no Demand
- * measured = unknown; under 3 phrases with Demand 50+ = little demand. Then
- * over the top 10 of the searched phrases: Competition 70+ and no opening =
- * tough market; Competition under 60 and 2+ openings = worth building; else
- * worth a look. An opening is a newcomer (released in the last 2 years, 1,000+
+ * measured = unknown. A phrase counts as searched with Demand 50+ and an app
+ * named for it in its top 10 (else people searching it want something else);
+ * under 3 searched phrases = little demand. Then over the apps named for the
+ * searched phrases: Competition 70+ and no opening = tough market; Competition
+ * under 60, 2+ openings and a typical 100+ ratings = worth building; else worth
+ * a look. An opening is a newcomer (released in the last 2 years, 1,000+
  * ratings) or a weak leader (under 4.0 stars with 100+ ratings, or not updated
  * in a year).
  */
@@ -298,27 +304,38 @@ export function ideaVerdict(
     };
   }
 
-  const searchedPhrases = measured
+  const named = (p: IdeaPhrase) =>
+    p.top.slice(0, 10).filter((a) => titleMatch(p.phrase, a.name) >= RELEVANT);
+  const popular = measured
     .filter((p) => (p.demand as number) >= SEARCHED)
     .toSorted((a, b) => (b.demand as number) - (a.demand as number));
+  const searchedPhrases = popular.filter((p) => named(p).length > 0);
+  const offTarget = popular.filter((p) => named(p).length === 0);
   const searched = searchedPhrases.map((p) => ({
     phrase: p.phrase,
     demand: p.demand as number,
   }));
-  const demandReason = `${searched.length} of ${count(measured.length, "phrase")} ${searched.length === 1 ? "has" : "have"} Demand ${SEARCHED} or more.`;
+  const demandReason = `${searched.length} of ${count(measured.length, "phrase")} ${searched.length === 1 ? "has" : "have"} Demand ${SEARCHED} or more and apps named for ${searched.length === 1 ? "it" : "them"}.`;
+  const offTargetReason =
+    offTarget.length > 0 &&
+    `${offTarget.map((p) => `"${p.phrase}"`).join(", ")} ${offTarget.length === 1 ? "is" : "are"} searched, but no app in the top 10 is named for ${offTarget.length === 1 ? "it" : "them"}, so people may want something else.`;
   if (searched.length < MIN_SEARCHED) {
     return {
       verdict: "little-demand",
-      reasons: [demandReason, "Few people search for apps like this."],
+      reasons: [
+        demandReason,
+        offTargetReason,
+        "Few people search for apps like this.",
+      ].filter((r): r is string => typeof r === "string"),
       searched,
       competitors: [],
     };
   }
 
-  // Each app once, counted by how many searched phrases it leads
+  // Each app named for a searched phrase once, counted by how many it leads
   const leaders = new Map<number, { app: TopApp; phrases: number }>();
   for (const p of searchedPhrases) {
-    for (const app of p.top.slice(0, 10)) {
+    for (const app of named(p)) {
       const seen = leaders.get(app.id);
       if (seen) seen.phrases++;
       else leaders.set(app.id, { app, phrases: 1 });
@@ -356,16 +373,23 @@ export function ideaVerdict(
   const verdict: Verdict =
     competition !== null && competition >= 70 && openings === 0
       ? "tough-market"
-      : competition !== null && competition < 60 && openings >= 2
+      : competition !== null &&
+          competition < 60 &&
+          openings >= 2 &&
+          typical !== null &&
+          typical >= SMALL_MARKET
         ? "worth-building"
         : "worth-a-look";
 
   const reasons = [
     demandReason,
+    offTargetReason,
     competition !== null &&
       `Average Competition of these phrases is ${competition}.`,
     typical !== null &&
-      `The leading apps have a typical ${count(typical, "rating")}.`,
+      (typical < SMALL_MARKET
+        ? `The apps named for these phrases have a typical ${count(typical, "rating")}, a small market.`
+        : `The apps named for these phrases have a typical ${count(typical, "rating")}.`),
     datesKnown &&
       (newcomers.length > 0
         ? `${count(newcomers.length, "newcomer")} in the top 10: released in the last 2 years, with ${NEWCOMER_RATINGS.toLocaleString("en")} or more ratings.`
