@@ -30,7 +30,7 @@ const STEPS: Record<
     label: "Worth a try",
     color: "default",
     variant: "soft",
-    help: "You do not rank yet, Demand is 30 or more and Competition is below 70. Add this keyword to your listing.",
+    help: "You do not rank yet, Demand is 30 or more, Competition is below 70, and the keyword is not in your listing. Add it to your listing.",
   },
   "long-shot": {
     label: "Long shot",
