@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "skills": {
+    "portless": {
+      "source": "vercel-labs/portless",
+      "commit": "6784e585a786a23b557d1291dfc86647587c4ea6",
+      "sourceType": "github",
+      "skillPath": "skills/portless/SKILL.md",
+      "computedHash": "18a44b42b29741c704b877b9c6d3f66e2dcba1dcb834d8c8df4059e8fd42cbc4"
+    }
+  }
+}
