@@ -40,3 +40,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .neon
+
+# agent skills (restore with: npx skills experimental_install)
+.agents/skills/
+.claude/skills/
+.grok/skills/
