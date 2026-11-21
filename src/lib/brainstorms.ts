@@ -4,12 +4,13 @@ import { generateText, Output } from "ai";
 import { desc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { brainstorms, keywords } from "@/db/schema";
+import { brainstorms, keywords, type Platform } from "@/db/schema";
 import { describeAiError, MODEL } from "@/lib/ai";
 import {
   type Latest,
   latestChecks,
   type Pair,
+  pairKey,
   UserError,
   upsertKeywords,
 } from "@/lib/checks";
@@ -27,6 +28,7 @@ export type BrainstormSummary = {
   id: number;
   idea: string;
   countries: string[];
+  platform: Platform;
   createdAt: string;
   keywords: number;
 };
@@ -49,6 +51,7 @@ const brainstormInput = z.object({
         .min(1, "Pick at least one storefront")
         .max(MAX_STOREFRONTS, `Pick at most ${MAX_STOREFRONTS} storefronts`),
     ),
+  platform: z.enum(["ios", "mac"]).default("ios"),
 });
 
 const ideasSchema = z.object({
@@ -66,10 +69,11 @@ const ideasSchema = z.object({
 export async function createBrainstorm(input: {
   idea: string;
   countries?: string[];
+  platform?: Platform;
 }): Promise<{ id: number }> {
   const parsed = brainstormInput.safeParse(input);
   if (!parsed.success) throw new UserError(parsed.error.issues[0].message);
-  const { idea, countries } = parsed.data;
+  const { idea, countries, platform } = parsed.data;
   const perCountry = Math.round(TARGET_PHRASES / countries.length);
   const maxPerCountry = Math.floor(MAX_PHRASES / countries.length);
 
@@ -79,7 +83,7 @@ export async function createBrainstorm(input: {
       model: MODEL,
       instructions:
         'You are an App Store keyword researcher. Suggest short phrases people really type into App Store search to find an app like the one described: its core function, use cases, problems solved and synonyms. Write each storefront\'s phrases in its primary language and script. Lowercase, 1 to 3 words. No brand or competitor names, no filler like "app" or "free", no duplicates.',
-      prompt: `Storefronts: ${countries.join(", ")}\nReturn one entry per storefront with ${perCountry} keywords each.\n\nApp idea:\n${idea}`,
+      prompt: `Store: ${platform === "mac" ? "Mac App Store" : "iPhone and iPad App Store"}\nStorefronts: ${countries.join(", ")}\nReturn one entry per storefront with ${perCountry} keywords each.\n\nApp idea:\n${idea}`,
       output: Output.object({ schema: ideasSchema }),
       maxOutputTokens: 2000,
       timeout: 45_000,
@@ -103,7 +107,7 @@ export async function createBrainstorm(input: {
       if (!phrase || phrase.length > 100 || seen.has(key)) continue;
       if (taken === maxPerCountry) break;
       seen.add(key);
-      pairs.push({ country, phrase });
+      pairs.push({ country, phrase, platform });
       taken++;
     }
   }
@@ -112,12 +116,10 @@ export async function createBrainstorm(input: {
   }
 
   const ids = await upsertKeywords(pairs);
-  const keywordIds = pairs.map(
-    (p) => ids.get(`${p.country}:${p.phrase}`) as number,
-  );
+  const keywordIds = pairs.map((p) => ids.get(pairKey(p)) as number);
   const [row] = await db
     .insert(brainstorms)
-    .values({ idea, countries, keywordIds })
+    .values({ idea, countries, platform, keywordIds })
     .returning({ id: brainstorms.id });
   await enqueue(keywordIds, { maxAgeMs: 24 * HOUR_MS, priority: 0 });
   return { id: row.id };
@@ -130,6 +132,7 @@ export async function listBrainstorms(): Promise<BrainstormSummary[]> {
       id: brainstorms.id,
       idea: brainstorms.idea,
       countries: brainstorms.countries,
+      platform: brainstorms.platform,
       createdAt: brainstorms.createdAt,
       keywords: sql<number>`cardinality(${brainstorms.keywordIds})::int`,
     })
@@ -143,6 +146,7 @@ export async function getBrainstorm(id: number): Promise<{
   id: number;
   idea: string;
   countries: string[];
+  platform: Platform;
   createdAt: string;
   rows: {
     keywordId: number;
@@ -177,6 +181,7 @@ export async function getBrainstorm(id: number): Promise<{
     id: b.id,
     idea: b.idea,
     countries: b.countries,
+    platform: b.platform,
     createdAt: b.createdAt.toISOString(),
     rows: b.keywordIds.flatMap((keywordId) => {
       const k = byId.get(keywordId);

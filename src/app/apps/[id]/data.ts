@@ -4,13 +4,14 @@ import { type SQL, sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 import { cache } from "react";
 import { db } from "@/db";
-import type { ListingText, Schedule } from "@/db/schema";
+import type { ListingText, Platform, Schedule } from "@/db/schema";
 
 export type WorkspaceApp = {
   trackId: number;
   name: string;
   icon: string;
   isMine: boolean;
+  platform: Platform;
   storefront: string;
   language: string;
   schedule: Schedule;
@@ -29,6 +30,7 @@ type AppJson = {
   is_mine: boolean;
   /** Null for removed apps and apps only seen as competitors */
   added_at?: string | null;
+  platform?: Platform;
   storefront?: string;
   countries?: string[];
   language?: string;
@@ -102,6 +104,7 @@ export const getWorkspaceApp = cache(
       name: app.name,
       icon: app.icon,
       isMine: app.is_mine,
+      platform: app.platform ?? "ios",
       storefront: app.storefront ?? "us",
       language,
       schedule: app.schedule ?? "daily",

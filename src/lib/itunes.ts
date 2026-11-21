@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { TopApp } from "@/db/schema";
+import type { Platform, TopApp } from "@/db/schema";
 import {
   reportSuccess,
   reportThrottle,
@@ -29,15 +29,17 @@ export type AppInfo = {
   developer: string;
   ratings: number;
   country: string;
+  /** mac for Mac-only apps; iPhone/iPad and universal apps are ios */
+  platform: Platform;
 };
 
 /** Every call takes a gate slot first; throttles pause the whole deployment. */
-async function request(
+async function requestJson(
   url: string,
   what: string,
   country: string,
   opts?: CallOpts,
-): Promise<Record<string, unknown>[]> {
+): Promise<Record<string, unknown>> {
   await takeSlot(opts?.deadline);
   const res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
 
@@ -49,7 +51,7 @@ async function request(
   if (res.status === 400) throw new InvalidStorefrontError(country);
   if (!res.ok) throw new Error(`App Store ${what} failed (${res.status})`);
 
-  let data: { results?: Record<string, unknown>[] };
+  let data: Record<string, unknown>;
   try {
     data = await res.json();
   } catch {
@@ -57,7 +59,18 @@ async function request(
     throw new ThrottledError(`App Store ${what} returned a non-JSON response`);
   }
   await reportSuccess();
-  return data.results ?? [];
+  return data;
+}
+
+/** The results array of a search or lookup reply. */
+async function request(
+  url: string,
+  what: string,
+  country: string,
+  opts?: CallOpts,
+): Promise<Record<string, unknown>[]> {
+  const data = await requestJson(url, what, country, opts);
+  return (data.results as Record<string, unknown>[] | undefined) ?? [];
 }
 
 function toAppInfo(r: Record<string, unknown>, country: string): AppInfo {
@@ -68,17 +81,33 @@ function toAppInfo(r: Record<string, unknown>, country: string): AppInfo {
     developer: (r.artistName as string) ?? "",
     ratings: (r.userRatingCount as number) ?? 0,
     country,
+    platform: r.kind === "mac-software" ? "mac" : "ios",
   };
 }
 
-/** App Store search results for a phrase in one storefront, in rank order. */
+/** { [key]: "YYYY-MM-DD" } from an Apple timestamp, or nothing when it is missing or invalid. */
+function isoDay<K extends string>(key: K, value: unknown) {
+  if (typeof value !== "string") return {};
+  const day = value.slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(day)
+    ? ({ [key]: day } as Record<K, string>)
+    : {};
+}
+
+/**
+ * App Store search results for a phrase in one storefront, in rank order. Mac
+ * search also returns iPhone/iPad apps that run on Mac; Mac-only apps always
+ * have 0 ratings because Apple does not publish Mac ratings.
+ */
 export async function search(
   phrase: string,
   country: string,
+  platform: Platform,
   opts?: CallOpts,
 ): Promise<TopApp[]> {
+  const entity = platform === "mac" ? "macSoftware" : "software";
   const results = await request(
-    `https://itunes.apple.com/search?term=${encodeURIComponent(phrase)}&country=${country}&entity=software&limit=200`,
+    `https://itunes.apple.com/search?term=${encodeURIComponent(phrase)}&country=${country}&entity=${entity}&limit=200`,
     "search",
     country,
     opts,
@@ -92,6 +121,9 @@ export async function search(
             icon: (r.artworkUrl100 as string) ?? "",
             ratings: (r.userRatingCount as number) ?? 0,
             avg: (r.averageUserRating as number) ?? 0,
+            ...isoDay("released", r.releaseDate),
+            ...isoDay("updated", r.currentVersionReleaseDate),
+            ...(typeof r.price === "number" && { price: r.price }),
           },
         ]
       : [],
@@ -151,6 +183,40 @@ export async function findApps(
   return results.flatMap((r) =>
     typeof r.trackId === "number" ? [toAppInfo(r, country)] : [],
   );
+}
+
+const REVIEW_DAY_MS = 86_400_000;
+
+/**
+ * Written reviews per day of an app in one storefront, from the latest page of
+ * Apple's customer reviews feed (up to 50, newest first): reviews over the days
+ * from the oldest of them to now. 0 when the app has none. Same host as search,
+ * so it takes a gate slot.
+ */
+export async function reviewsPerDay(
+  id: number,
+  country: string,
+  opts?: CallOpts,
+): Promise<number> {
+  const data = (await requestJson(
+    `https://itunes.apple.com/${country}/rss/customerreviews/page=1/id=${id}/sortby=mostrecent/json`,
+    "reviews",
+    country,
+    opts,
+  )) as { feed?: { entry?: unknown } };
+  // One review comes as an object, several as an array; entries without a rating are the app itself
+  const raw = data.feed?.entry;
+  const entries = (Array.isArray(raw) ? raw : raw ? [raw] : []) as {
+    "im:rating"?: unknown;
+    updated?: { label?: string };
+  }[];
+  const times = entries.flatMap((e) => {
+    const t = e["im:rating"] ? Date.parse(e.updated?.label ?? "") : Number.NaN;
+    return Number.isNaN(t) ? [] : [t];
+  });
+  if (times.length === 0) return 0;
+  const days = Math.max(1, (Date.now() - Math.min(...times)) / REVIEW_DAY_MS);
+  return times.length / days;
 }
 
 /**
@@ -315,14 +381,17 @@ const decodeXml = (s: string) =>
 export async function searchHints(
   typed: string,
   country: string,
+  platform: Platform,
   signal?: AbortSignal,
 ): Promise<string[] | null> {
   const storefront = STOREFRONT_IDS[country];
   if (!storefront) return null;
+  // Platform 13 after the storefront id gets the Mac App Store's suggestions; without it Apple answers for iPhone
+  const front = platform === "mac" ? `${storefront}-1,13` : String(storefront);
   const res = await fetch(
     `https://search.itunes.apple.com/WebObjects/MZSearchHints.woa/wa/hints?clientApplication=Software&term=${encodeURIComponent(typed)}`,
     {
-      headers: { "X-Apple-Store-Front": String(storefront) },
+      headers: { "X-Apple-Store-Front": front },
       signal: signal
         ? AbortSignal.any([AbortSignal.timeout(HINTS_TIMEOUT_MS), signal])
         : AbortSignal.timeout(HINTS_TIMEOUT_MS),

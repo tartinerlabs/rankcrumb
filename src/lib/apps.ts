@@ -13,7 +13,13 @@ import {
 } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { appCompetitors, apps, type Schedule, terms } from "@/db/schema";
+import {
+  appCompetitors,
+  apps,
+  type Platform,
+  type Schedule,
+  terms,
+} from "@/db/schema";
 import { STOREFRONT_LOCALES } from "@/lib/asc";
 import { type AppRef, appRow, UserError } from "@/lib/checks";
 import {
@@ -35,6 +41,8 @@ export type AppSummary = {
   icon: string;
   developer: string;
   isMine: boolean;
+  /** mac: terms are checked against Mac App Store search */
+  platform: Platform;
   storefront: string;
   countries: string[];
   language: string;
@@ -142,10 +150,18 @@ export async function addApp(input: {
   } = parse(z.object({ id: appId, country, mine: z.boolean() }), input);
 
   const [existing] = await db
-    .select({ name: apps.name, icon: apps.icon, developer: apps.developer })
+    .select({
+      name: apps.name,
+      icon: apps.icon,
+      developer: apps.developer,
+      platform: apps.platform,
+      addedAt: apps.addedAt,
+    })
     .from(apps)
     .where(eq(apps.trackId, id));
-  const info = existing ?? (await lookup(id, cc));
+  // A competitor-only row was saved from search results, which do not say whether it is a Mac app
+  const info =
+    existing?.addedAt != null ? existing : ((await lookup(id, cc)) ?? existing);
   if (!info) throw new UserError("App not found in that storefront");
 
   await db
@@ -155,6 +171,7 @@ export async function addApp(input: {
       name: info.name,
       icon: info.icon,
       developer: info.developer,
+      platform: info.platform,
       storefront: cc,
       isMine: mine,
       countries: mine ? [] : [cc],
@@ -164,6 +181,7 @@ export async function addApp(input: {
       target: apps.trackId,
       set: {
         isMine: mine,
+        platform: sql`excluded.platform`,
         addedAt: sql`coalesce(${apps.addedAt}, now())`,
         // Adding again inside the Undo window keeps the app; its removed terms are still purged
         removedAt: null,
@@ -185,6 +203,7 @@ async function summaries(trackId?: number): Promise<AppSummary[]> {
       icon: apps.icon,
       developer: apps.developer,
       isMine: apps.isMine,
+      platform: apps.platform,
       storefront: apps.storefront,
       countries: apps.countries,
       language: apps.language,

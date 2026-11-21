@@ -8,6 +8,7 @@ import {
   integer,
   jsonb,
   primaryKey,
+  real,
   smallint,
   snakeCase,
   text,
@@ -23,7 +24,18 @@ export type TopApp = {
   icon: string;
   ratings: number;
   avg: number;
+  /** First release, ISO date (YYYY-MM-DD); absent on checks before it was stored */
+  released?: string;
+  /** Latest version release, ISO date; absent on older checks */
+  updated?: string;
+  /** Upfront price in the storefront currency (0 = free); absent on older checks */
+  price?: number;
+  /** Mac only: written reviews per day in the storefront, from Apple's reviews feed; absent when not measured */
+  reviewsPerDay?: number;
 };
+
+/** App Store an app or phrase belongs to: iPhone/iPad or Mac. */
+export type Platform = "ios" | "mac";
 
 export type Schedule = "off" | "daily" | "weekly";
 /** localized: AI fills a phrase for each new storefront. english: English storefronts get the label, others none. manual: only phrases set explicitly. */
@@ -37,6 +49,8 @@ export const keywords = snakeCase.table(
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
     phrase: text().notNull(),
     country: varchar({ length: 2 }).notNull(),
+    // Store searched: the same phrase on iPhone and Mac is two keywords with separate history
+    platform: text().$type<Platform>().notNull().default("ios"),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
     // Set while a check is queued: the first enqueue time, kept across retries
     queuedAt: timestamp({ withTimezone: true }),
@@ -46,10 +60,11 @@ export const keywords = snakeCase.table(
     attempts: smallint().notNull().default(0),
   },
   (t) => [
-    uniqueIndex().on(t.country, t.phrase),
+    uniqueIndex().on(t.platform, t.country, t.phrase),
     // Target of term_phrases' composite FK, so a phrase row's country always matches its keyword
     uniqueIndex().on(t.id, t.country),
     check("keywords_country_ck", sql`${t.country} ~ '^[a-z]{2}$'`),
+    check("keywords_platform_ck", sql`${t.platform} in ('ios', 'mac')`),
     index()
       .on(t.attempts, t.queuePriority, t.queuedAt)
       .where(sql`${t.queuedAt} is not null`),
@@ -97,6 +112,8 @@ export const apps = snakeCase.table(
     icon: text().notNull(),
     isMine: boolean().notNull().default(false),
     developer: text().notNull().default(""),
+    // Mac for Mac-only apps; its terms are checked against Mac search
+    platform: text().$type<Platform>().notNull().default("ios"),
     // Storefront the app was found in; the daily refresh looks it up there
     storefront: varchar({ length: 2 }).notNull().default("us"),
     // Storefronts researched for this app, in display order
@@ -115,6 +132,7 @@ export const apps = snakeCase.table(
   },
   (t) => [
     check("apps_schedule_ck", sql`${t.schedule} in ('off', 'daily', 'weekly')`),
+    check("apps_platform_ck", sql`${t.platform} in ('ios', 'mac')`),
   ],
 );
 
@@ -202,14 +220,35 @@ export const termPhrases = snakeCase.table(
 );
 
 // A saved niche idea with the AI keywords proposed for it; not tied to an app
-export const brainstorms = snakeCase.table("brainstorms", {
-  id: integer().primaryKey().generatedAlwaysAsIdentity(),
-  idea: text().notNull(),
-  countries: varchar({ length: 2 }).array().notNull(),
-  // keywords rows proposed for the idea, in AI order
-  keywordIds: integer().array().notNull(),
-  createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
-});
+export const brainstorms = snakeCase.table(
+  "brainstorms",
+  {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    idea: text().notNull(),
+    countries: varchar({ length: 2 }).array().notNull(),
+    // Store the idea is for; its phrases are keywords of this platform
+    platform: text().$type<Platform>().notNull().default("ios"),
+    // keywords rows proposed for the idea, in AI order
+    keywordIds: integer().array().notNull(),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check("brainstorms_platform_ck", sql`${t.platform} in ('ios', 'mac')`),
+  ],
+);
+
+// Review pace of a Mac app in one storefront, cached because each costs an App Store request
+export const reviewPace = snakeCase.table(
+  "review_pace",
+  {
+    trackId: bigint({ mode: "number" }).notNull(),
+    country: varchar({ length: 2 }).notNull(),
+    // Written reviews per day over the latest page of the feed (0 = none)
+    perDay: real().notNull(),
+    checkedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.trackId, t.country] })],
+);
 
 // Single row shared by every function: App Store request slots, rate-limit pause and the worker lease
 export const checkWorker = snakeCase.table(

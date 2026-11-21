@@ -179,6 +179,55 @@ export function difficultyScore(
   );
 }
 
+/** Reviews per day mapped to 0..1 on a log scale of reviews a year: none -> 0, 10,000+ a year -> 1. */
+const paceStrength = (perDay: number) =>
+  Math.min(1, Math.max(0, Math.log10(1 + perDay * 365) / 4));
+
+const YEAR_MS = 365 * 86_400_000;
+
+/**
+ * Strength of an app with no measured review pace, 0..0.6 (capped below a
+ * busy app's pace): years on the store (5+ = full) halved when not updated in
+ * a year. 0.3 when the dates are missing.
+ */
+function ageStrength(app: Pick<TopApp, "released" | "updated">, now: number) {
+  if (!app.released) return 0.3;
+  const years = (now - Date.parse(app.released)) / YEAR_MS;
+  const fresh = app.updated && now - Date.parse(app.updated) < YEAR_MS;
+  return 0.6 * Math.min(1, Math.max(0, years / 5)) * (fresh ? 1 : 0.5);
+}
+
+/**
+ * Competition 0-100 on the Mac App Store, where Apple publishes no ratings.
+ * Position-weighted strength of the top 10, scaled by how strongly each app
+ * targets the phrase (as in difficultyScore): review pace when measured
+ * (reviewsPerDay), else years on the store and recent updates.
+ */
+export function macDifficultyScore(
+  phrase: string,
+  results: Pick<TopApp, "name" | "released" | "updated" | "reviewsPerDay">[],
+  now = Date.now(),
+  topN = 10,
+): number {
+  const top = results.slice(0, topN);
+  if (top.length === 0) return 0;
+  let num = 0;
+  let den = 0;
+  for (let i = 0; i < topN; i++) {
+    const w = posWeight(i + 1);
+    den += w;
+    const r = top[i];
+    if (!r) continue;
+    const relevance = 0.3 + 0.7 * titleMatch(phrase, r.name);
+    const strength =
+      r.reviewsPerDay === undefined
+        ? ageStrength(r, now)
+        : paceStrength(r.reviewsPerDay);
+    num += w * relevance * strength;
+  }
+  return Math.round((100 * num) / den);
+}
+
 const CJK =
   /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
 

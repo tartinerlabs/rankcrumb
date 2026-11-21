@@ -235,6 +235,7 @@ export async function drain(deadline: number): Promise<DrainResult> {
           id: keywords.id,
           phrase: keywords.phrase,
           country: keywords.country,
+          platform: keywords.platform,
         })
         .from(keywords)
         .where(isNotNull(keywords.queuedAt))
@@ -248,7 +249,9 @@ export async function drain(deadline: number): Promise<DrainResult> {
       if (!item) break;
 
       try {
-        await recordCheck(item.phrase, item.country, null, { deadline });
+        await recordCheck(item.phrase, item.country, item.platform, null, {
+          deadline,
+        });
         await db
           .update(keywords)
           .set({ queuedAt: null, attempts: 0, queuePriority: 1 })
