@@ -134,7 +134,7 @@ const handler = createMcpHandler(
       {
         title: "Add app",
         description:
-          "Add an app to the workspace, as one of yours or as a researched app. Your apps with no storefronts return needsCountries; then call set_countries.",
+          "Add an app to the workspace, as one of yours or as a researched app. Your apps with no storefronts return needsCountries and suggestedCountries (default storefronts that sell the app); then call set_countries.",
         inputSchema: z.object({
           appId,
           storefront: storefront.default("us"),

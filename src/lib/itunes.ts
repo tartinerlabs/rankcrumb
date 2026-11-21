@@ -31,6 +31,8 @@ export type AppInfo = {
   country: string;
   /** mac for Mac-only apps; iPhone/iPad and universal apps are ios */
   platform: Platform;
+  /** Listing languages as Apple's two-letter codes (EN, DE), in no particular order */
+  languages: string[];
 };
 
 /** Every call takes a gate slot first; throttles pause the whole deployment. */
@@ -82,6 +84,7 @@ function toAppInfo(r: Record<string, unknown>, country: string): AppInfo {
     ratings: (r.userRatingCount as number) ?? 0,
     country,
     platform: r.kind === "mac-software" ? "mac" : "ios",
+    languages: (r.languageCodesISO2A as string[] | undefined) ?? [],
   };
 }
 
@@ -236,6 +239,72 @@ export function parseAppLink(
   const id = Number(digits);
   if (!Number.isSafeInteger(id) || id <= 0) return null;
   return { id, country: link?.[1]?.toLowerCase() ?? "us" };
+}
+
+const PAGE_TIMEOUT_MS = 8_000;
+
+const pageUrl = (id: number, country: string) =>
+  `https://apps.apple.com/${country}/app/id${id}`;
+
+/**
+ * The storefronts of `countries` that sell the app: its page redirects to the
+ * named page there and is 404 elsewhere. apps.apple.com is a separate host from
+ * search, so it takes no gate slot. A storefront whose check fails is left out.
+ */
+export async function soldIn(
+  id: number,
+  countries: string[],
+): Promise<string[]> {
+  const sold = await Promise.all(
+    countries.map(async (country) => {
+      try {
+        const res = await fetch(pageUrl(id, country), {
+          method: "HEAD",
+          redirect: "manual",
+          signal: AbortSignal.timeout(PAGE_TIMEOUT_MS),
+        });
+        return res.status < 400;
+      } catch {
+        return false;
+      }
+    }),
+  );
+  return countries.filter((_, i) => sold[i]);
+}
+
+/**
+ * The public subtitle of an app in one storefront ("" when it has none), from
+ * the data embedded in its apps.apple.com page; null when the page is missing
+ * or has no entry for the app. No gate slot, like soldIn.
+ */
+export async function publicSubtitle(
+  id: number,
+  country: string,
+): Promise<string | null> {
+  const res = await fetch(pageUrl(id, country), {
+    signal: AbortSignal.timeout(PAGE_TIMEOUT_MS),
+  });
+  if (!res.ok) return null;
+  const html = await res.text();
+  const json = html.match(
+    /<script type="application\/json" id="serialized-server-data">([\s\S]*?)<\/script>/,
+  )?.[1];
+  if (!json) return null;
+  // The page lists other apps too; the app's own lockup has its id as adamId
+  let subtitle: string | null = null;
+  JSON.parse(json, (_key, value) => {
+    if (
+      subtitle === null &&
+      value &&
+      typeof value === "object" &&
+      value.$kind === "Lockup" &&
+      value.adamId === String(id)
+    ) {
+      subtitle = typeof value.subtitle === "string" ? value.subtitle : "";
+    }
+    return value;
+  });
+  return subtitle;
 }
 
 // App Store storefront ids for the search hints header, from app-store-scraper 0.18.0 (lib/constants.js).

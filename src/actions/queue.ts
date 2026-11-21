@@ -1,11 +1,24 @@
 "use server";
 
 import { act } from "@/actions/act";
+import { appRow } from "@/lib/checks";
+import { cacheListing } from "@/lib/meta";
 import { checkNow, kick, pauseChecks, resumeChecks } from "@/lib/queue";
 
-/** Check an app's phrases now (all visible terms, or the given ones) unless checked in the last hour. */
+/**
+ * Check an app's phrases now (all visible terms, or the given ones) unless
+ * checked in the last hour. Checking a whole own app also re-reads its listing.
+ */
 export async function checkNowAction(appId: number, termIds?: number[]) {
-  return act(() => checkNow(appId, termIds), true);
+  const relist = async () => {
+    if (termIds === undefined && (await appRow(appId)).isMine) {
+      await cacheListing(appId);
+    }
+  };
+  return act(async () => {
+    const [queued] = await Promise.all([checkNow(appId, termIds), relist()]);
+    return queued;
+  }, true);
 }
 
 /** Pause while checks run: take the app's pending checks off the queue. Returns how many. */
