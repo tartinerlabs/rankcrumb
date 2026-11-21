@@ -13,6 +13,7 @@ import {
   termPhrases,
   terms,
 } from "@/db/schema";
+import { SlotDeadlineError } from "@/lib/gate";
 import {
   reviewsPerDay,
   search,
@@ -39,6 +40,8 @@ const HOUR_MS = 3_600_000;
 const PACE_TOP = 5;
 const PACE_MIN_DEMAND = 50;
 const PACE_MAX_AGE_MS = 7 * 24 * HOUR_MS;
+// A whole check stays inside the worker's 60s lease, which is only renewed between keywords
+const PACE_BUDGET_MS = 45_000;
 
 /** A failure the user should see as is (bad input, missing app). */
 export class UserError extends Error {
@@ -118,13 +121,14 @@ async function popularity(
 
 /**
  * Reviews per day of each app in one storefront: cached for a week, else read
- * from Apple's reviews feed and cached. An app whose feed fails is left out;
- * throttles and gate deadlines are thrown so the check is retried.
+ * from Apple's reviews feed and cached. An app whose feed fails, or that gets
+ * no request slot before the deadline, is left out; throttles are thrown so
+ * the check is retried.
  */
 async function paces(
   ids: number[],
   country: string,
-  opts?: { deadline?: number },
+  deadline: number,
 ): Promise<Map<number, number>> {
   const found = new Map<number, number>();
   if (ids.length === 0) return found;
@@ -143,8 +147,10 @@ async function paces(
     if (found.has(id)) continue;
     let perDay: number;
     try {
-      perDay = await reviewsPerDay(id, country, opts);
+      perDay = await reviewsPerDay(id, country, { deadline });
     } catch (e) {
+      // Out of time: the rest are scored by age, as when Demand is low
+      if (e instanceof SlotDeadlineError) break;
       if (e instanceof ThrottledError) throw e;
       console.warn(`review pace ${country} ${id}`, e);
       continue;
@@ -163,22 +169,22 @@ async function paces(
 
 /**
  * Competition on the Mac App Store, which publishes no ratings: review pace of
- * the top 5 when Demand is 50 or more (stored on those apps), else from app age
- * and updates alone.
+ * the top 5 when Demand is 50 or more (stored on those apps), fetched until
+ * `deadline`; other apps from app age and updates alone.
  */
 async function macDifficulty(
   phrase: string,
   country: string,
   topApps: TopApp[],
   demand: number | null,
-  opts?: { deadline?: number },
+  deadline: number,
 ): Promise<number> {
   if (demand !== null && demand >= PACE_MIN_DEMAND) {
     const top = topApps.slice(0, PACE_TOP);
     const pace = await paces(
       top.map((a) => a.id),
       country,
-      opts,
+      deadline,
     );
     for (const app of top) {
       const perDay = pace.get(app.id);
@@ -197,6 +203,10 @@ export async function recordCheck(
   appId: number | null,
   opts?: { deadline?: number },
 ) {
+  const paceDeadline = Math.min(
+    Date.now() + PACE_BUDGET_MS,
+    opts?.deadline ?? Number.POSITIVE_INFINITY,
+  );
   // Autocomplete is another Apple host and never throws, so it runs during the gate wait
   const [topApps, demand] = await Promise.all([
     search(phrase, country, platform, opts),
@@ -206,7 +216,7 @@ export async function recordCheck(
   const volume = volumeScore(phrase, topApps);
   const difficulty =
     platform === "mac"
-      ? await macDifficulty(phrase, country, topApps, demand, opts)
+      ? await macDifficulty(phrase, country, topApps, demand, paceDeadline)
       : difficultyScore(phrase, topApps);
   const rank = appId === null ? null : rankOf(topApps, appId);
 
