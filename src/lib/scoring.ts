@@ -106,13 +106,18 @@ function namedFor(phrase: string, title: string): boolean {
   const pCompact = p.replaceAll(" ", "");
   const tCompact = t.replaceAll(" ", "");
   if (` ${t} `.includes(` ${p} `)) return true;
-  if (pCompact.length >= 6 && tCompact.includes(pCompact)) return true;
+  // Run together; any length for scripts written without spaces (Chinese, Japanese, Korean)
+  if (
+    (pCompact.length >= 6 || CJK.test(pCompact)) &&
+    tCompact.includes(pCompact)
+  )
+    return true;
   const tStems = t.split(" ").map(wordStem);
   return tokenize(phrase).every(
     (tok) =>
       tStems.includes(wordStem(tok)) ||
       // compound words (de: "kalorienzähler" inside "KI-Kalorienzähler")
-      (tok.length >= 6 && tCompact.includes(tok)),
+      ((tok.length >= 6 || CJK.test(tok)) && tCompact.includes(tok)),
   );
 }
 
