@@ -11,7 +11,7 @@ import {
 import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, Suspense, use, useEffect, useState } from "react";
 import { paletteKeywordsAction } from "@/actions/terms";
-import { BulbIcon } from "@/components/icons";
+import { BulbIcon, HomeIcon } from "@/components/icons";
 import type { PaletteKeyword } from "@/lib/terms";
 import type { SidebarApp, SidebarBrainstorm } from "./data/apps";
 
@@ -127,10 +127,21 @@ function SidebarNav({
         <Sidebar.Group>
           <Sidebar.Menu aria-label="Create">
             <Sidebar.MenuItem
-              id="new"
+              id="home"
               href="/"
-              textValue="New"
+              textValue="Home"
               isCurrent={pathname === "/"}
+            >
+              <Sidebar.MenuIcon>
+                <HomeIcon />
+              </Sidebar.MenuIcon>
+              <Sidebar.MenuLabel>Home</Sidebar.MenuLabel>
+            </Sidebar.MenuItem>
+            <Sidebar.MenuItem
+              id="new"
+              href="/new"
+              textValue="New"
+              isCurrent={pathname === "/new"}
             >
               <Sidebar.MenuIcon>
                 <IconPlus />
@@ -318,7 +329,10 @@ function CommandResults({
       onAction={(key) => navigate(String(key))}
     >
       <Command.Group heading="Create">
-        <Command.Item id="/" textValue="Add an app or brainstorm">
+        <Command.Item id="/" textValue="Home: what to do next">
+          Home: what to do next
+        </Command.Item>
+        <Command.Item id="/new" textValue="Add an app or brainstorm">
           Add an app or brainstorm
         </Command.Item>
       </Command.Group>

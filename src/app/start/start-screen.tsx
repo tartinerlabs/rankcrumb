@@ -54,10 +54,12 @@ const COUNTRY_CHOICES = [
 
 export function StartScreen({
   progress,
+  initialMode = "app",
 }: {
   progress: Promise<StartProgress>;
+  initialMode?: Mode;
 }) {
-  const [mode, setMode] = useState<Mode>("app");
+  const [mode, setMode] = useState<Mode>(initialMode);
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 pt-8 pb-12 sm:px-6 sm:pt-16">
