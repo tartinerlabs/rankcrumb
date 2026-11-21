@@ -204,7 +204,10 @@ export function BrainstormNext({
         <Button variant="outline" onPress={copy}>
           Copy Keywords
         </Button>
-        <Link href="/" className={buttonVariants({ variant: "ghost" })}>
+        <Link
+          href="/new?mode=niche"
+          className={buttonVariants({ variant: "ghost" })}
+        >
           Test Another Idea
         </Link>
       </div>
