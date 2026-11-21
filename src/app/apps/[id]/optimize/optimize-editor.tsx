@@ -58,9 +58,12 @@ type Props = {
   missingEnv: string[] | null;
 };
 
+/** The listings a draft started from: the main one and each other locale */
+type Bases = { main: ListingText; others: Record<string, ListingText> };
+
 type SavedDraft = {
-  /** The listing the draft started from; a changed listing drops the draft */
-  base: ListingText;
+  /** A changed main listing drops the draft; a changed locale drops only its row */
+  base: Bases;
   options: Option[];
   selected: Key;
   chosen: string | null;
@@ -72,12 +75,14 @@ type SavedDraft = {
 const draftKey = (appId: number) => `optimize-draft:${appId}`;
 
 // Session storage, so switching tabs keeps the work; it can be blocked or empty
-function readDraft(appId: number, base: ListingText): SavedDraft | null {
+function readDraft(appId: number, base: Bases): SavedDraft | null {
   try {
     const raw = sessionStorage.getItem(draftKey(appId));
     if (!raw) return null;
     const draft = JSON.parse(raw) as SavedDraft;
-    return JSON.stringify(draft.base) === JSON.stringify(base) ? draft : null;
+    return JSON.stringify(draft.base?.main) === JSON.stringify(base.main)
+      ? draft
+      : null;
   } catch {
     return null;
   }
@@ -115,40 +120,60 @@ export function OptimizeEditor({
   const [selected, setSelected] = useState<Key>("current");
   const [chosen, setChosen] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<Key>>(new Set(["names"]));
-  const [rows, setRows] = useState<Record<string, Row>>(() =>
+  const freshRows = (): Record<string, Row> =>
     Object.fromEntries(
       others.map((g) => [g.locale, { listing: g.current, edited: false }]),
-    ),
-  );
+    );
+  const [rows, setRows] = useState<Record<string, Row>>(freshRows);
   const [promo, setPromo] = useState("");
   const [description, setDescription] = useState("");
   // "options" for step 1, "all" or a locale for step 2
   const [pending, setPending] = useState<Set<string>>(new Set());
 
-  // Restore after mount (storage is client-only), then save every change
-  // State, not a ref: saving starts on the render after the restore, never before it
-  const [restored, setRestored] = useState(false);
+  // Restore after mount (storage is client-only) and whenever the listing
+  // changes, then save every change. Saving waits until the restore for the
+  // current listing has landed, so an old draft is never written over a new base.
+  const bases: Bases = {
+    main: main.current,
+    others: Object.fromEntries(others.map((g) => [g.locale, g.current])),
+  };
+  const baseKey = JSON.stringify(bases);
+  const [restoredFor, setRestoredFor] = useState<string | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: baseKey stands for bases and others
   useEffect(() => {
-    const draft = readDraft(appId, main.current);
+    const draft = readDraft(appId, bases);
+    const rowsNow = freshRows();
     if (draft) {
       setOptions(draft.options);
       setSelected(draft.selected);
       setChosen(draft.chosen);
-      setRows((current) => ({
-        ...current,
-        ...Object.fromEntries(
-          Object.entries(draft.rows).filter(([locale]) => locale in current),
-        ),
-      }));
+      // Keep a locale's draft only when that locale is unchanged since
+      for (const [locale, row] of Object.entries(draft.rows)) {
+        if (
+          locale in rowsNow &&
+          JSON.stringify(draft.base.others?.[locale]) ===
+            JSON.stringify(bases.others[locale])
+        ) {
+          rowsNow[locale] = row;
+        }
+      }
       setPromo(draft.promo);
       setDescription(draft.description);
+    } else {
+      setOptions([initial]);
+      setSelected("current");
+      setChosen(null);
+      setPromo("");
+      setDescription("");
     }
-    setRestored(true);
-  }, [appId, main.current]);
+    setRows(rowsNow);
+    setRestoredFor(baseKey);
+  }, [appId, baseKey]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: baseKey stands for bases
   useEffect(() => {
-    if (!restored) return;
+    if (restoredFor !== baseKey) return;
     writeDraft(appId, {
-      base: main.current,
+      base: bases,
       options,
       selected,
       chosen,
@@ -158,14 +183,14 @@ export function OptimizeEditor({
     });
   }, [
     appId,
-    main.current,
+    baseKey,
     options,
     selected,
     chosen,
     rows,
     promo,
     description,
-    restored,
+    restoredFor,
   ]);
 
   const now = score(main.current, main.phrases);

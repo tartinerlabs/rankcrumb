@@ -18,7 +18,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { recheckBrainstormAction } from "@/actions/brainstorms";
-import { addTermsAction } from "@/actions/terms";
+import { trackPhrasesAction } from "@/actions/terms";
 import { getCountry } from "@/components/countries";
 import { MetricLabel } from "@/components/metric";
 import type { IdeaVerdict, Verdict } from "@/lib/scoring";
@@ -119,21 +119,26 @@ const MAX_ADD = 100;
 
 /** What to do with the result: put the phrases on one of your apps, or test another idea. */
 export function BrainstormNext({
-  phrases,
+  keywords,
   apps,
 }: {
-  phrases: string[];
+  /** One per phrase and country, so a local phrase keeps its storefront */
+  keywords: { keywordId: number; phrase: string }[];
   apps: { trackId: number; name: string }[];
 }) {
   const router = useRouter();
   const [appId, setAppId] = useState<number | null>(apps[0]?.trackId ?? null);
   const [isPending, startTransition] = useTransition();
-  const labels = phrases.slice(0, MAX_ADD);
+  const picked = keywords.slice(0, MAX_ADD);
+  const labels = [...new Set(picked.map((k) => k.phrase))];
 
   const add = () => {
     if (appId === null) return;
     startTransition(async () => {
-      const res = await addTermsAction(appId, { labels, localize: true });
+      const res = await trackPhrasesAction(appId, {
+        keywordIds: picked.map((k) => k.keywordId),
+        localize: true,
+      });
       if (res.error !== undefined) {
         toast.danger(res.error);
         return;

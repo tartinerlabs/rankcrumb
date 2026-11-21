@@ -19,7 +19,8 @@ const TITLE_MAX = 80;
 function ideaTitle(idea: string) {
   const first = idea.trim().split(/(?<=[.!?])\s/)[0] ?? idea;
   if (first.length <= TITLE_MAX) return first.replace(/[.!?]$/, "");
-  return `${first.slice(0, first.lastIndexOf(" ", TITLE_MAX))}…`;
+  const boundary = first.lastIndexOf(" ", TITLE_MAX);
+  return `${first.slice(0, boundary > 0 ? boundary : TITLE_MAX)}…`;
 }
 
 export const metadata: Metadata = { title: "Brainstorm" };
@@ -93,7 +94,7 @@ async function BrainstormContent({
       />
       <BrainstormTable rows={rows} />
       <BrainstormNext
-        phrases={[...new Set(rows.map((r) => r.phrase))]}
+        keywords={rows.map(({ keywordId, phrase }) => ({ keywordId, phrase }))}
         apps={apps.map(({ trackId, name }) => ({ trackId, name }))}
       />
     </div>
