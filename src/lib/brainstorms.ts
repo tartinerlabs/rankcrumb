@@ -217,7 +217,6 @@ export async function getBrainstorm(id: number): Promise<{
           .map((r) => ({
             phrase: r.phrase,
             demand: r.latest?.volume ?? null,
-            competition: r.latest?.difficulty ?? null,
             top: tops.get(r.keywordId) ?? [],
             queued: r.queued,
           })),

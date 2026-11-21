@@ -88,6 +88,34 @@ function titleMatch(phrase: string, title: string): number {
   return share === 1 ? 0.85 : share * share * 0.7;
 }
 
+/** Drop a plural s, then -ing/-ment/-er/-ed, then a final e, keeping 3+ letters: trackers/tracking → track, devices/device → devic. */
+function wordStem(word: string): string {
+  let w = word;
+  for (const re of [/(?<!s)s$/, /(ing|ment|er|ed)$/, /e$/]) {
+    const cut = w.replace(re, "");
+    if (cut.length >= 3) w = cut;
+  }
+  return w;
+}
+
+/** Whether the title has every content word of the phrase (or the whole phrase run together), allowing only word endings to differ. */
+function namedFor(phrase: string, title: string): boolean {
+  const p = normalize(phrase);
+  const t = normalize(title);
+  if (!p || !t) return false;
+  const pCompact = p.replaceAll(" ", "");
+  const tCompact = t.replaceAll(" ", "");
+  if (` ${t} `.includes(` ${p} `)) return true;
+  if (pCompact.length >= 6 && tCompact.includes(pCompact)) return true;
+  const tStems = t.split(" ").map(wordStem);
+  return tokenize(phrase).every(
+    (tok) =>
+      tStems.includes(wordStem(tok)) ||
+      // compound words (de: "kalorienzähler" inside "KI-Kalorienzähler")
+      (tok.length >= 6 && tCompact.includes(tok)),
+  );
+}
+
 /** DCG-style position weight, rank is 1-based. */
 const posWeight = (rank: number) => 1 / Math.log2(rank + 1);
 
@@ -227,11 +255,10 @@ export type Verdict =
   | "checking"
   | "unknown";
 
-/** One phrase of an idea in one storefront: latest Demand and Competition and its top 10, null scores when not checked. */
+/** One phrase of an idea in one storefront: latest Demand and its top 10, null Demand when not checked. */
 export type IdeaPhrase = {
   phrase: string;
   demand: number | null;
-  competition: number | null;
   top: TopApp[];
   queued: boolean;
 };
@@ -253,8 +280,6 @@ const NEWCOMER_RATINGS = 1000;
 const STALE_DAYS = 365;
 const WEAK_AVG = 4;
 const WEAK_MIN_RATINGS = 100;
-// Every word of the phrase is in the app's name (titleMatch 0.85+)
-const RELEVANT = 0.85;
 // Typical ratings of the named apps below this = small market
 const SMALL_MARKET = 100;
 const DAY_MS = 86_400_000;
@@ -305,7 +330,7 @@ export function ideaVerdict(
   }
 
   const named = (p: IdeaPhrase) =>
-    p.top.slice(0, 10).filter((a) => titleMatch(p.phrase, a.name) >= RELEVANT);
+    p.top.slice(0, 10).filter((a) => namedFor(p.phrase, a.name));
   const popular = measured
     .filter((p) => (p.demand as number) >= SEARCHED)
     .toSorted((a, b) => (b.demand as number) - (a.demand as number));
@@ -360,21 +385,28 @@ export function ideaVerdict(
   ).size;
   const datesKnown = apps.some((a) => a.released !== undefined);
 
-  const scored = searchedPhrases.filter((p) => p.competition !== null);
-  const competition =
-    scored.length === 0
-      ? null
-      : Math.round(
-          scored.reduce((sum, p) => sum + (p.competition as number), 0) /
-            scored.length,
-        );
+  // Competition over the named apps only, each at its own rank; other results count as empty
+  const competition = Math.round(
+    searchedPhrases.reduce(
+      (sum, p) =>
+        sum +
+        difficultyScore(
+          p.phrase,
+          p.top
+            .slice(0, 10)
+            .map((a) =>
+              namedFor(p.phrase, a.name) ? a : { ...a, ratings: 0 },
+            ),
+        ),
+      0,
+    ) / searchedPhrases.length,
+  );
   const typical = median(apps.map((a) => a.ratings));
 
   const verdict: Verdict =
-    competition !== null && competition >= 70 && openings === 0
+    competition >= 70 && openings === 0
       ? "tough-market"
-      : competition !== null &&
-          competition < 60 &&
+      : competition < 60 &&
           openings >= 2 &&
           typical !== null &&
           typical >= SMALL_MARKET
@@ -384,8 +416,7 @@ export function ideaVerdict(
   const reasons = [
     demandReason,
     offTargetReason,
-    competition !== null &&
-      `Average Competition of these phrases is ${competition}.`,
+    `Average Competition of these phrases, counting only the apps named for them, is ${competition}.`,
     typical !== null &&
       (typical < SMALL_MARKET
         ? `The apps named for these phrases have a typical ${count(typical, "rating")}, a small market.`
