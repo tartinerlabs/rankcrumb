@@ -254,7 +254,8 @@ export async function loadTrack(
   rows: TrackRow[];
   losingTo: LosingTo[];
 }> {
-  const { country: code } = await researchedCountry(appId, country);
+  const { app, country: code } = await researchedCountry(appId, country);
+  const listing = listingText(app, code);
   const phrases = (await phraseRows(appId, [code])).filter(
     (r) => !r.hidden && r.keywordId !== null && r.phrase !== null,
   );
@@ -291,7 +292,14 @@ export async function loadTrack(
       volume: l?.volume ?? null,
       difficulty: l?.difficulty ?? null,
       top5: l?.top.slice(0, 5) ?? [],
-      nextStep: l ? nextStep(l.rank, l.volume, l.difficulty) : null,
+      nextStep: l
+        ? nextStep(
+            l.rank,
+            l.volume,
+            l.difficulty,
+            isCovered(r.phrase as string, listing),
+          )
+        : null,
       checkedAt: l?.checkedAt.toISOString() ?? null,
       queued: r.queued,
     };

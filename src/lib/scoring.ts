@@ -290,13 +290,17 @@ export function nextStep(
   rank: number | null,
   volume: number | null,
   difficulty: number,
+  /** The phrase is already in the listing: adding it cannot be the advice */
+  inListing = false,
 ): NextStep | null {
   if (rank !== null && rank <= 10) return "keep";
   // Demand not measured: no basis for the other rules
   if (volume === null) return null;
   if (volume < 10) return "skip";
   if (rank !== null && rank <= 50 && volume >= 30) return "push";
-  if (rank === null && volume >= 30 && difficulty < 70) return "try";
+  if (rank === null && volume >= 30 && difficulty < 70 && !inListing) {
+    return "try";
+  }
   if (volume >= 30 && difficulty >= 70) return "long-shot";
   return null;
 }
