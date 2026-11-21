@@ -335,7 +335,7 @@ export function OptimizeEditor({
             {source === "asc"
               ? "Current listing from App Store Connect."
               : missingEnv
-                ? "Current listing is the public name only. Connect App Store Connect to load your subtitle and keyword field."
+                ? "Current listing is the public name and subtitle. Connect App Store Connect to load your keyword field."
                 : "App Store Connect could not be read, so the current listing is the public name only."}
           </Typography.Paragraph>
         </div>

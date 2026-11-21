@@ -5,7 +5,7 @@ import { db } from "@/db";
 import { appCompetitors, apps, type ListingText } from "@/db/schema";
 import { ascConfig, readListing, STOREFRONT_LOCALES } from "@/lib/asc";
 import { type AppRow, appRow } from "@/lib/checks";
-import { lookupMany, ThrottledError } from "@/lib/itunes";
+import { lookupMany, publicSubtitle, ThrottledError } from "@/lib/itunes";
 
 const LOOKUP_CHUNK = 100;
 // Room under the deadline for one more lookup
@@ -16,7 +16,8 @@ const CALL_MARGIN_MS = 15_000;
  * competitors, with one batched lookup per 100 apps per storefront. Every app
  * in a looked-up chunk gets refreshed_at, even when Apple left it out or the
  * call failed, so nothing loops; a throttle stops the run. Then re-caches own
- * listings: from App Store Connect when it is configured, else the new name.
+ * listings: from App Store Connect when it is configured, else the new name
+ * and the public subtitle.
  */
 export async function refreshAppMeta(input: {
   deadline: number;
@@ -86,7 +87,7 @@ export async function refreshAppMeta(input: {
     }
   }
 
-  // Own apps only; without App Store Connect this stores the refreshed name
+  // Own apps only; without App Store Connect this stores the refreshed name and the public subtitle
   const doneSet = new Set(done);
   for (const a of due) {
     if (!a.isMine || !doneSet.has(a.trackId)) continue;
@@ -98,7 +99,7 @@ export async function refreshAppMeta(input: {
 
 /**
  * Store the app's listing per locale: App Store Connect (read only) for own
- * apps when it is configured, else the name only. An App Store Connect failure
+ * apps when it is configured, else the name and the public subtitle. An App Store Connect failure
  * keeps the stored listing.
  */
 export async function cacheListing(
@@ -116,6 +117,14 @@ export async function cacheListing(
       // ASC errors name the request path, so the app id stays out of the log
       console.error("cacheListing", e);
       return app.listing ?? listing;
+    }
+  } else if (app.isMine) {
+    // Without App Store Connect the subtitle still shows on the public page; the keyword field never does
+    try {
+      const subtitle = await publicSubtitle(appId, app.storefront);
+      if (subtitle) listing[app.language].subtitle = subtitle;
+    } catch (e) {
+      console.error("cacheListing subtitle", e);
     }
   }
   await db.update(apps).set({ listing }).where(eq(apps.trackId, appId));

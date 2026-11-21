@@ -66,12 +66,12 @@ export async function loadListing(appId: number): Promise<{
       console.error(`loadListing ${appId}`, e);
     }
   }
-  // Without App Store Connect the public name is all there is; keep it current
-  const locales = config ? storedListing(app) : nameOnly(app);
+  // Without App Store Connect an own app has its public name and subtitle, cached by cacheListing
+  const locales = app.isMine ? storedListing(app) : nameOnly(app);
   return { source: "public", version: null, editable: false, locales };
 }
 
-/** The listing cached by addApp, the daily cron and settings changes, else the name only. */
+/** The listing cached by addApp, the daily cron and settings changes (public name and subtitle without App Store Connect), else the name only. */
 function storedListing(app: AppRow): Record<string, ListingText> {
   return app.listing ?? nameOnly(app);
 }
@@ -83,9 +83,10 @@ function nameOnly(app: AppRow): Record<string, ListingText> {
 /** Main-language keyword field items, then name and subtitle parts split on - : | , that are not terms yet. */
 export async function importCandidates(appId: number): Promise<string[]> {
   const app = await appRow(appId);
-  // Same source as loadListing: the stored copy is only kept fresh by App Store Connect
-  const config = app.isMine ? ascConfig() : null;
-  const main = (config ? storedListing(app) : nameOnly(app))[app.language] ?? {
+  // Same source as loadListing
+  const main = (app.isMine ? storedListing(app) : nameOnly(app))[
+    app.language
+  ] ?? {
     ...EMPTY,
     name: app.name,
   };

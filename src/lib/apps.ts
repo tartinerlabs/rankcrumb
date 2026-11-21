@@ -27,6 +27,7 @@ import {
   findApps,
   lookup,
   parseAppLink,
+  soldIn,
   ThrottledError,
 } from "@/lib/itunes";
 import { cacheListing } from "@/lib/meta";
@@ -134,15 +135,38 @@ export async function searchApps(query: string): Promise<AppHit[]> {
 }
 
 /**
+ * The main listing language a fresh app most likely has: the storefront's own
+ * locale when the app is listed in that language, else its only language,
+ * else US English.
+ */
+function guessLanguage(languages: string[], storefront: string): string {
+  const has = (locale: string) =>
+    languages.includes(locale.slice(0, 2).toUpperCase());
+  const local = STOREFRONT_LOCALES[storefront];
+  if (local && has(local)) return local;
+  if (languages.length === 1) {
+    const only = Object.values(STOREFRONT_LOCALES).find(has);
+    if (only) return only;
+  }
+  return "en-US";
+}
+
+/**
  * Look up (unless saved), then make the app a workspace. A competitor workspace
  * gets the storefront it was found in when it has none; an own app gets its
- * listing cached. needsCountries is true for an own app with no countries.
+ * listing cached. needsCountries is true for an own app with no countries;
+ * suggestedCountries are then the default storefronts and the one it was found
+ * in that sell it.
  */
 export async function addApp(input: {
   id: number;
   country: string;
   mine: boolean;
-}): Promise<{ app: AppSummary; needsCountries: boolean }> {
+}): Promise<{
+  app: AppSummary;
+  needsCountries: boolean;
+  suggestedCountries: string[];
+}> {
   const {
     id,
     country: cc,
@@ -163,6 +187,9 @@ export async function addApp(input: {
   const info =
     existing?.addedAt != null ? existing : ((await lookup(id, cc)) ?? existing);
   if (!info) throw new UserError("App not found in that storefront");
+  // Only a fresh lookup says which languages the app is listed in
+  const language =
+    "languages" in info ? guessLanguage(info.languages, cc) : undefined;
 
   await db
     .insert(apps)
@@ -175,6 +202,7 @@ export async function addApp(input: {
       storefront: cc,
       isMine: mine,
       countries: mine ? [] : [cc],
+      ...(language && { language }),
       addedAt: sql`now()`,
     })
     .onConflictDoUpdate({
@@ -183,6 +211,10 @@ export async function addApp(input: {
         isMine: mine,
         platform: sql`excluded.platform`,
         addedAt: sql`coalesce(${apps.addedAt}, now())`,
+        // A competitor-only row never had its language picked; a workspace keeps the one it has
+        ...(language && {
+          language: sql`case when ${apps.addedAt} is null then excluded.language else ${apps.language} end`,
+        }),
         // Adding again inside the Undo window keeps the app; its removed terms are still purged
         removedAt: null,
         // excluded.countries is [] for an own app, so only a competitor workspace gets one
@@ -192,7 +224,16 @@ export async function addApp(input: {
   if (mine) await cacheListing(id);
 
   const app = await getApp(id);
-  return { app, needsCountries: mine && app.countries.length === 0 };
+  const needsCountries = mine && app.countries.length === 0;
+  if (!needsCountries) return { app, needsCountries, suggestedCountries: [] };
+  const choices = [...new Set([...DEFAULT_COUNTRIES, cc])];
+  const sold = await soldIn(id, choices);
+  // Every check failing says nothing about where it is sold
+  return {
+    app,
+    needsCountries,
+    suggestedCountries: sold.length > 0 ? sold : DEFAULT_COUNTRIES,
+  };
 }
 
 async function summaries(trackId?: number): Promise<AppSummary[]> {

@@ -139,8 +139,11 @@ function FirstRunSteps({ progress }: { progress: Promise<StartProgress> }) {
 function AppSearch() {
   const router = useRouter();
   const [input, setInput] = useState("");
-  // Own app saved without countries: ask once before opening the workspace
-  const [countriesFor, setCountriesFor] = useState<number | null>(null);
+  // Own app saved without countries: ask once before opening the workspace, with the storefronts that sell it ticked
+  const [countriesFor, setCountriesFor] = useState<{
+    id: number;
+    suggested: string[];
+  } | null>(null);
   const [result, setResult] = useState<SearchResult>({ apps: [] });
   const [isSearching, setIsSearching] = useState(false);
   const [selectedKey, setSelectedKey] = useState<number | null>(null);
@@ -249,15 +252,17 @@ function AppSearch() {
           setPicked(null);
           setSelectedKey(null);
         }}
-        onAdded={(id, needsCountries) => {
+        onAdded={(id, needsCountries, suggested) => {
           setPicked(null);
           setSelectedKey(null);
-          if (needsCountries) setCountriesFor(id);
+          if (needsCountries) setCountriesFor({ id, suggested });
           else router.push(`/apps/${id}/board`);
         }}
       />
       <CountriesDialog
-        appId={countriesFor}
+        key={countriesFor?.id}
+        appId={countriesFor?.id ?? null}
+        suggested={countriesFor?.suggested ?? []}
         onDone={(id) => {
           setCountriesFor(null);
           router.push(`/apps/${id}/board`);
@@ -274,7 +279,7 @@ function OwnerDialog({
 }: {
   app: AppInfo | null;
   onClose: () => void;
-  onAdded: (id: number, needsCountries: boolean) => void;
+  onAdded: (id: number, needsCountries: boolean, suggested: string[]) => void;
 }) {
   const [isPending, startTransition] = useTransition();
   const [choice, setChoice] = useState<boolean | null>(null);
@@ -294,7 +299,11 @@ function OwnerDialog({
         setError(res.error);
         return;
       }
-      onAdded(res.data.app.id, res.data.needsCountries);
+      onAdded(
+        res.data.app.id,
+        res.data.needsCountries,
+        res.data.suggestedCountries,
+      );
     });
   };
 
@@ -370,14 +379,18 @@ function OwnerDialog({
 
 function CountriesDialog({
   appId,
+  suggested,
   onDone,
 }: {
   appId: number | null;
+  suggested: string[];
   onDone: (id: number) => void;
 }) {
   const [isPending, startTransition] = useTransition();
-  const [countries, setCountries] = useState<string[]>([...PRESET_COUNTRIES]);
-  const [importListing, setImportListing] = useState(false);
+  const [countries, setCountries] = useState<string[]>(
+    suggested.length > 0 ? suggested : [...PRESET_COUNTRIES],
+  );
+  const [importListing, setImportListing] = useState(true);
   const [error, setError] = useState<string | null>(null);
   // The step in progress, so a long import says what it is doing
   const [step, setStep] = useState<string | null>(null);
