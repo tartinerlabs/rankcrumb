@@ -41,7 +41,7 @@ yarn-error.log*
 next-env.d.ts
 .neon
 
-# agent skills (restore with: npx skills experimental_install)
+# agent skills (restore with: pnpm dlx skills experimental_install)
 .agents/skills/
 .claude/skills/
 .grok/skills/
