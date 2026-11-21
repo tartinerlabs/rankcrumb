@@ -309,11 +309,13 @@ const decodeXml = (s: string) =>
 /**
  * App Store search suggestions for what a user has typed, in Apple's order (up
  * to 10), or null when the storefront has no known id. A separate Apple host
- * from search, so it takes no gate slot; failures throw a plain Error.
+ * from search, so it takes no gate slot. Failures, an abort of `signal` and a
+ * reply that is not a suggestions plist throw a plain Error.
  */
 export async function searchHints(
   typed: string,
   country: string,
+  signal?: AbortSignal,
 ): Promise<string[] | null> {
   const storefront = STOREFRONT_IDS[country];
   if (!storefront) return null;
@@ -321,11 +323,17 @@ export async function searchHints(
     `https://search.itunes.apple.com/WebObjects/MZSearchHints.woa/wa/hints?clientApplication=Software&term=${encodeURIComponent(typed)}`,
     {
       headers: { "X-Apple-Store-Front": String(storefront) },
-      signal: AbortSignal.timeout(HINTS_TIMEOUT_MS),
+      signal: signal
+        ? AbortSignal.any([AbortSignal.timeout(HINTS_TIMEOUT_MS), signal])
+        : AbortSignal.timeout(HINTS_TIMEOUT_MS),
     },
   );
   if (!res.ok) throw new Error(`App Store search hints failed (${res.status})`);
   const xml = await res.text();
+  // An empty list is still <key>hints</key><array></array>; anything else (an error page) is not an answer
+  if (!/<key>hints<\/key>\s*<array\s*\/?>/.test(xml)) {
+    throw new Error("App Store search hints returned an unexpected reply");
+  }
   return [...xml.matchAll(/<key>term<\/key>\s*<string>([^<]*)<\/string>/g)].map(
     (m) => decodeXml(m[1]),
   );

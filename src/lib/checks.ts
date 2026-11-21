@@ -21,6 +21,10 @@ import {
 } from "@/lib/scoring";
 
 const MAX_PHRASE_LENGTH = 100;
+// Autocomplete gets one overall limit, well inside the worker's 60s lease
+const POPULARITY_BUDGET_MS = 15_000;
+// Room left after autocomplete before the caller's deadline, as the worker's stop margin
+const POPULARITY_DEADLINE_MARGIN_MS = 15_000;
 const HOUR_MS = 3_600_000;
 
 /** A failure the user should see as is (bad input, missing app). */
@@ -38,19 +42,33 @@ export type AppRow = typeof apps.$inferSelect;
 /**
  * Demand from App Store autocomplete: the fewest characters of the phrase typed
  * before Apple suggests it, by binary search after one full-phrase request
- * (about 5 requests). Null when the storefront has no id or Apple fails.
+ * (about 5 requests). Null when the storefront has no id, Apple fails, or the
+ * requests outlast one overall limit (15s, less near the caller's deadline).
  */
 async function popularity(
   phrase: string,
   country: string,
+  deadline?: number,
 ): Promise<number | null> {
+  const budget = Math.min(
+    POPULARITY_BUDGET_MS,
+    deadline === undefined
+      ? POPULARITY_BUDGET_MS
+      : deadline - Date.now() - POPULARITY_DEADLINE_MARGIN_MS,
+  );
+  if (budget <= 0) return null;
+  const signal = AbortSignal.timeout(budget);
   // Spaces ignored: Apple suggests "kalorien zähler" for "kalorienzähler"
   const compact = (s: string) => normalize(s).replaceAll(" ", "");
   const target = compact(phrase);
   const chars = Array.from(phrase);
   // 1-based place of the phrase among the suggestions, 0 when absent, null when unknown storefront
   const placeAt = async (typed: number) => {
-    const hints = await searchHints(chars.slice(0, typed).join(""), country);
+    const hints = await searchHints(
+      chars.slice(0, typed).join(""),
+      country,
+      signal,
+    );
     if (hints === null) return null;
     const i = hints.findIndex((h) => compact(h) === target);
     return i + 1;
@@ -90,7 +108,7 @@ export async function recordCheck(
   // Autocomplete is another Apple host and never throws, so it runs during the gate wait
   const [topApps, demand] = await Promise.all([
     search(phrase, country, opts),
-    popularity(phrase, country),
+    popularity(phrase, country, opts?.deadline),
   ]);
   // Old title-targeting score, still stored in the volume column; Demand reads popularity
   const volume = volumeScore(phrase, topApps);
